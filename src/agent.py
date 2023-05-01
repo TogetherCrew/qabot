@@ -102,7 +102,7 @@ class Agent(BaseModel):
                 tool_info=tool_info,
             )
         self.ui.notify(title="SUBQUESTIONS",
-                       message=self.task_manager.subquetions,
+                       message=self.task_manager.subquestions,
                        title_color="RED")
         with self.ui.loading("Generate Task Plan..."):
             self.task_manager.generate_task_plan(
