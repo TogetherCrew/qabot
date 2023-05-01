@@ -25,7 +25,7 @@ class Task(BaseModel):
 
 class TaskManager(BaseModel):
     """Task manager model."""
-    subquetions: List[str] = Field([], description="The list of subquetions")
+    subquestions: List[str] = Field([], description="The list of subquestions")
     tasks: List[Task] = Field([], description="The list of tasks")
     current_task_id: int = Field(1, description="The last task id")
     llm: BaseLLM = Field(..., description="llm class for the agent")
@@ -53,7 +53,7 @@ class TaskManager(BaseModel):
 
         # Add tasks with a serial number
         for subquestion in result_list:
-            self.subquetions.append(f"- {subquestion}")
+            self.subquestions.append(f"- {subquestion}")
 
         self
 
@@ -66,7 +66,7 @@ class TaskManager(BaseModel):
                 name=name,
                 role=role,
                 goal=goal,
-                subquestions_list=self.subquetions
+                subquestions_list=self.subquestions
             )
 
         except Exception as e:
