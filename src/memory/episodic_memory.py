@@ -1,4 +1,5 @@
-from typing import List, Dict, Any
+from sentence_transformers import SentenceTransformer
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
 from langchain import LLMChain
@@ -19,7 +20,7 @@ class EpisodicMemory(BaseModel):
     store: Dict[str, Episode] = Field({}, description="The list of episodes")
     llm: BaseLLM = Field(..., description="llm class for the agent")
     embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(), title="Embeddings to use for tool retrieval")
+        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
     vector_store: VectorStore = Field(
         None, title="Vector store to use for tool retrieval")
 
@@ -102,7 +103,8 @@ class EpisodicMemory(BaseModel):
 
     def save_local(self, path: str) -> None:
         """Save the vector store locally."""
-        self.vector_store.save_local(folder_path=path)
+        vs: FAISS = self.vector_store
+        vs.save_local(folder_path=path)
 
     def load_local(self, path: str) -> None:
         """Load the vector store locally."""

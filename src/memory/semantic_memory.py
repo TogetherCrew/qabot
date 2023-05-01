@@ -1,3 +1,4 @@
+from sentence_transformers import SentenceTransformer
 import json
 from typing import Any, Optional
 from pydantic import BaseModel, Field
@@ -19,7 +20,7 @@ class SemanticMemory(BaseModel):
     openaichat: Optional[ChatOpenAI] = Field(
         None, description="ChatOpenAI class for the agent")
     embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(), title="Embeddings to use for tool retrieval")
+        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
     vector_store: VectorStore = Field(
         None, title="Vector store to use for tool retrieval")
 
@@ -29,10 +30,12 @@ class SemanticMemory(BaseModel):
     def extract_entity(self, text: str) -> dict:
         """Extract an entity from a text using the LLM"""
         if self.openaichat:
+            # print(f"semantic->extract_entity->Text1: {text}")
             # If OpenAI Chat is available, it is used for higher accuracy results.
-            propmt = get_chat_template().format_prompt(text=text).to_messages()
-            result = self.openaichat(propmt).content
+            prompt = get_chat_template().format_prompt(text=text).to_messages()
+            result = self.openaichat(prompt).content
         else:
+            # print(f"semantic->extract_entity->Text2: {text}")
             # Get the result from the LLM
             llm_chain = LLMChain(prompt=get_template(), llm=self.llm)
             try:
@@ -42,6 +45,7 @@ class SemanticMemory(BaseModel):
 
         # Parse and validate the result
         try:
+            # print(f"semantic->extract_entity->Result: {result}")
             result_json_obj = LLMJsonOutputParser.parse_and_validate(
                 json_str=result,
                 json_schema=CREATE_JSON_SCHEMA_STR,
@@ -50,7 +54,15 @@ class SemanticMemory(BaseModel):
         except LLMJsonOutputParserException as e:
             raise LLMJsonOutputParserException(str(e))
         else:
-            self._embed_knowledge(result_json_obj)
+            try:
+                if len(result_json_obj) > 0:
+                    self._embed_knowledge(result_json_obj)
+            except Exception as e:
+                print(f"semantic->extract_entity->Text: {text}\n")
+                print(f"semantic->extract_entity->Result: {result}\n")
+                print(
+                    f"semantic->extract_entity->Extracted entity: {result_json_obj}\n")
+                raise Exception(f"Error: {e}")
             return result_json_obj
 
     def remember_related_knowledge(self, query: str, k: int = 5) -> dict:

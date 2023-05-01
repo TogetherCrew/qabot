@@ -1,3 +1,4 @@
+from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from langchain.vectorstores import FAISS
 from langchain.vectorstores import VectorStore
@@ -21,7 +22,7 @@ class ToolNotFoundException(ProcedualMemoryException):
 class ProcedualMemory(BaseModel):
     tools: List[AgentTool] = Field([], title="hoge")
     embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(), title="Embeddings to use for tool retrieval")
+        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
     docs: List[Document] = Field([], title="Documents to use for tool retrieval")
     vector_store: VectorStore = Field(
         None, title="Vector store to use for tool retrieval")
@@ -55,6 +56,13 @@ class ProcedualMemory(BaseModel):
     def remember_all_tools(self) -> List[AgentTool]:
         """Remember all tools and return them."""
         return self.tools
+
+    def tools_to_prompt(self, tools: List[AgentTool]) -> str:
+        # Set up the prompt
+        tool_info = ""
+        for tool in tools:
+            tool_info += tool.get_tool_info() + "\n"
+        return tool_info
 
     def _embed_docs(self) -> None:
         """Embed tools."""
