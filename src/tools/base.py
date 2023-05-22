@@ -41,6 +41,10 @@ class AgentTool(BaseModel):
     @property
     def args(self) -> Dict:
         """Get the argument name and argument type from the signature"""
+
+        if self.__fields__.get('args', None) is not None:
+            return self.__fields__.get('args', None)
+
         func_signature = inspect.signature(self.func)
         required_args = {}
 

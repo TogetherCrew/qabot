@@ -74,7 +74,7 @@ class LLMJsonOutputParser(BaseModel):
         return re.sub(r"\[|\]", "", json_str)
 
     @classmethod
-    def _parse_json(cls, json_str: str,  json_schema: str, llm: BaseLLM) -> Union[str, Dict[Any, Any]]:
+    def _parse_json(cls, json_str: str, json_schema: str, llm: BaseLLM) -> Union[str, Dict[Any, Any]]:
         """
         Parses the JSON string.
         """
@@ -129,6 +129,7 @@ class LLMJsonOutputParser(BaseModel):
         except Exception as e:
             raise FixJsonException(e)
         try:
+            # print(f"fixed_json_str: {fixed_json_str}")
             json.loads(fixed_json_str)
             return fixed_json_str
         except Exception:
