@@ -1,11 +1,7 @@
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
-from langchain.vectorstores import FAISS
-from langchain.vectorstores import VectorStore
 from langchain.schema import Document
-from pydantic import BaseModel, Field
 from langchain.vectorstores import VectorStore, FAISS
-from langchain.schema import Document
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import List
 from tools.base import AgentTool

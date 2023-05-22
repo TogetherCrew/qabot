@@ -51,7 +51,8 @@ This reminds you of related past events summarized:
 {related_past_episodes}
 
 [INSTRUCTION]
-Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [GOAL].
+ - Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [GOAL].
+ - If not possible find the answer, return just nothing: 'I don't know'.
 
 [FINAL ANSWER]
 """
