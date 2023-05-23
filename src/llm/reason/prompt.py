@@ -136,7 +136,7 @@ def get_template(memory: List[Episode] = None) -> PromptTemplate:
     return PROMPT
 
 
-def get_chat_template(memory: List[Episode] = None) -> ChatPromptTemplate:
+def get_chat_template(memory: List[Episode] = None, should_summary=False) -> ChatPromptTemplate:
     messages = []
     messages.append(SystemMessagePromptTemplate.from_template(BASE_TEMPLATE))
 
@@ -144,14 +144,17 @@ def get_chat_template(memory: List[Episode] = None) -> ChatPromptTemplate:
     if len(memory) > 0:
         # insert current time and date
         recent_episodes = RECENT_EPISODES_TEMPLATE
-        recent_episodes += f"The current time and date is {time.strftime('%c')}:\n"
+        # recent_episodes += f"The current time and date is {time.strftime('%c')}:\n"
 
-        # insert past conversation logs
-        for episode in memory:
-            thoughts_str = json.dumps(episode.thoughts)
-            action_str = json.dumps(episode.action)
-            result = episode.result
-            recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
+        if should_summary:
+            recent_episodes = Episode.get_summary_of_episodes(memory)
+        else:
+            # insert past conversation logs
+            for episode in memory:
+                thoughts_str = json.dumps(episode.thoughts)
+                action_str = json.dumps(episode.action)
+                result = episode.result
+                recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
 
         messages.append(SystemMessage(content=recent_episodes))
     messages.append(SystemMessage(content=SCHEMA_TEMPLATE))

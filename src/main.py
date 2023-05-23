@@ -31,8 +31,8 @@ AGENT_ROLE = os.getenv("AGENT_ROLE", "")
 assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
 AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
 assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
-AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
-assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
+# AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
+# assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
@@ -42,7 +42,7 @@ openaichat = ChatOpenAI(temperature=0.0,
                         openai_api_key=OPENAI_API_KEY)  # type: ignore # Optional
 
 ### 1.Create Agent ###
-dir = AGENT_DIRECTORY
+# dir = AGENT_DIRECTORY
 
 
 ### 2. Set up tools for agent ###
@@ -94,10 +94,9 @@ agent = Agent(
     role=AGENT_ROLE,
     goal=AGENT_OBJECTIVE,
     ui=CommandlineUserInterface(),
-    openai_api_key=OPENAI_API_KEY,
     llm=llm,
     openaichat=openaichat,
-    dir=dir
+    # dir=dir
 )
 ## 3. Momoize usage of tools to agent ###
 agent.prodedural_memory.memorize_tools([convo_tool_summary, convo_tool])
