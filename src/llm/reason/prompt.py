@@ -117,7 +117,7 @@ def get_template(memory: List[Episode] = None) -> PromptTemplate:
     if len(memory) > 0:
         # insert current time and date
         recent_episodes = RECENT_EPISODES_TEMPLATE
-        RECENT_EPISODES_TEMPLATE += f"The current time and date is {time.strftime('%c')}"
+        recent_episodes += f"The current time and date is {time.strftime('%c')}"
 
         # insert past conversation logs
         for episode in memory:
