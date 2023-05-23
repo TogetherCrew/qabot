@@ -1,6 +1,7 @@
 import os
 import json
-from turtle import color
+from turtle import title
+import tiktoken
 from typing import Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 from llm.summarize.prompt import get_final_answer_template
@@ -19,9 +20,6 @@ from langchain import LLMChain
 from langchain.chat_models import ChatOpenAI
 
 # Define the default values
-# DEFAULT_AGENT_NAME = "AI"
-# DEFAULT_AGENT_ROLE = "Autonomous AI agent that uses both inference and tools to answer many things"
-# DEFAULT_AGENT_GOAL = "Ending world hunger"
 DEFAULT_AGENT_DIR = "./agent_data"
 
 
@@ -61,6 +59,7 @@ class Agent(BaseModel):
 
     def __init__(self, openai_api_key: str, dir: str, **data: Any) -> None:
         super().__init__(**data)
+
         self.task_manager = TaskManager(llm=self.llm)
         self.episodic_memory = EpisodicMemory(llm=self.llm)
         self.semantic_memory = SemanticMemory(llm=self.llm, openaichat=self.openaichat)
@@ -155,32 +154,44 @@ class Agent(BaseModel):
 
             # ReAct: Reasoning
             with self.ui.loading("Thinking..."):
-                reasoning_result = None
-                try:
-                    reasoning_result = self._reason()
-                    thoughts = reasoning_result["thoughts"]
-                    action = reasoning_result["action"]
-                    tool_name = action["tool_name"]
-                    args = action["args"]
-                except Exception as e:
-                    self.ui.notify(title="REASONING ERROR", message=str(reasoning_result), title_color="RED")
-                    raise e
-            self.ui.notify(title="TASK", message=thoughts["task"])
-            self.ui.notify(title="OBSERVATION", message=reasoning_result["observation"])
-            self.ui.notify(title="IDEA", message=thoughts["idea"])
-            self.ui.notify(title="REASONING", message=thoughts["reasoning"])
-            self.ui.notify(title="CRITICISM", message=thoughts["criticism"])
-            self.ui.notify(title="THOUGHT", message=thoughts["summary"])
-            self.ui.notify(title="NEXT ACTION", message=action)
+                should_try_complete = False
+                while True:
+                    reasoning_result = None
+                    try:
+                        reasoning_result = self._reason(should_try_complete=should_try_complete)
+                        thoughts = reasoning_result["thoughts"]
+                        action = reasoning_result["action"]
+                        tool_name = action["tool_name"]
+                        args = action["args"]
+                        self.ui.notify(title="TASK", message=thoughts["task"])
+                        self.ui.notify(title="OBSERVATION", message=reasoning_result["observation"])
+                        self.ui.notify(title="IDEA", message=thoughts["idea"])
+                        self.ui.notify(title="REASONING", message=thoughts["reasoning"])
+                        self.ui.notify(title="CRITICISM", message=thoughts["criticism"])
+                        self.ui.notify(title="THOUGHT", message=thoughts["summary"])
+                        self.ui.notify(title="NEXT ACTION", message=action)
+                    except Exception as e:
+                        self.ui.notify(title="REASONING ERROR", message=str(reasoning_result), title_color="RED")
+                        raise e
 
-            # check if the tool_name and args already was used in the past in that task.
-            # if so, skip the action.
-            if self.task_manager.is_action_already_used_in_current_task(tool_name, args):
-                self.ui.notify(title="SKIP ACTION", title_color="RED",
-                               message=f"{tool_name} {args} is already used in the current task.")
-                
-                args = {"result": f"{tool_name} {args} is already used in the current task. You are in loop."}
-                tool_name = "task_complete"
+                    
+                    # check if the tool_name and args already was used in the past in that task.
+                    # if so, skip the action.
+                    if self.task_manager.is_action_already_used_in_current_task(tool_name, args):
+                        self.ui.notify(title="SKIP ACTION", title_color="RED",
+                                    message=f"{tool_name} {args} is already used in the current task. Try again!")
+                        should_try_complete = True
+                        
+                        # args = {"result": f"{tool_name} {args} is already used in the current task. You are in loop."}
+                        # tool_name = "task_complete"
+                    else:
+                        self.ui.notify(title="BREAK", title_color="RED",
+                                    message="Break the loop and continue")
+                        break
+                    if tool_name == "task_complete":
+                        self.ui.notify(title="BREAK", title_color="RED",
+                                    message="Break the loop because the task is completed.")
+                        break
             
             # Task Complete
             if tool_name == "task_complete":
@@ -244,7 +255,7 @@ class Agent(BaseModel):
                 thoughts=thoughts,
                 action=action,
                 result=action_result
-            )
+            ) # type: ignore
 
             summary = self.episodic_memory.summarize_and_memorize_episode(episode)
             self.ui.notify(title="MEMORIZE NEW EPISODE",
@@ -300,7 +311,7 @@ class Agent(BaseModel):
                                        title_color="RED") # type: ignore
         return result            
 
-    def _reason(self) -> Union[str, Dict[Any, Any]]:
+    def _reason(self, should_try_complete=False, should_summary=False) -> Union[str, Dict[Any, Any]]:
         current_task_description = self.task_manager.get_current_task_string()
 
         # Retrie task related memories
@@ -312,11 +323,13 @@ class Agent(BaseModel):
             if len(related_past_episodes) > 0:
                 self.ui.notify(title="TASK RELATED EPISODE",
                                message=related_past_episodes)
-                # summary_of_related_past_episodes = ("\n").join(
-                #     [past.summary for past in related_past_episodes])
-                # self.ui.notify(title="SUMMARY OF TASK RELATED EPISODES",
-                #                message=summary_of_related_past_episodes)
-                # related_past_episodes = summary_of_related_past_episodes
+                
+                if should_summary:
+                    summary_of_related_past_episodes = ("\n").join(
+                        [past.summary for past in related_past_episodes])
+                    self.ui.notify(title="SUMMARY OF TASK RELATED EPISODES",
+                                message=summary_of_related_past_episodes)
+                    related_past_episodes = summary_of_related_past_episodes
 
             # Retrieve concepts related to the task.
             related_knowledge = self.semantic_memory.remember_related_knowledge(
@@ -327,13 +340,15 @@ class Agent(BaseModel):
                 self.ui.notify(title="TASK RELATED KNOWLEDGE",
                                message=related_knowledge)
 
-        # Get the relevant tools
-        # If agent has to much tools, use "remember_relevant_tools"
-        # because too many tool information will cause context windows overflow.
-        tools = self.prodedural_memory.remember_all_tools()
+        tool_info = "\n You should use task_complete to complete the task now."
+        if not should_try_complete:
+            # Get the relevant tools
+            # If agent has to much tools, use "remember_relevant_tools"
+            # because too many tool information will cause context windows overflow.
+            tools = self.prodedural_memory.remember_all_tools()
 
-        # Set up the prompt
-        tool_info = self.prodedural_memory.tools_to_prompt(tools)
+            # Set up the prompt
+            tool_info = self.prodedural_memory.tools_to_prompt(tools)
 
         # Get the recent episodes
         memory = self.episodic_memory.remember_recent_episodes(2)
@@ -351,10 +366,18 @@ class Agent(BaseModel):
             )
             prompt_msg = prompt.to_messages()
 
-            # self.ui.notify(title="REASONING PROMPT",
-            #                message=" ".join([msg.content for msg in prompt_msg]))
+            full_prompt = " ".join([msg.content for msg in prompt_msg])
+
+            self.ui.notify(title="REASONING PROMPT",
+                           message=full_prompt)
             try:
-                result = self.openaichat(prompt_msg).content
+                enc = tiktoken.encoding_for_model(self.openaichat.model_name)
+                token_count = len(enc.encode(full_prompt))
+                if token_count > 4096:
+                    self.ui.notify(title="TOKEN EXCEEDS", title_color="red", message=f"Token count {token_count} exceeds 4096. Trying again with summary.")
+                    result = self._reason(should_try_complete=should_try_complete, should_summary=True)
+                else:
+                    result = self.openaichat(prompt_msg).content
                 # openai.error.InvalidRequestError: This model's maximum context length is 4097 tokens. However, your messages resulted in 4879 tokens. Please reduce the length of the messages.
             except Exception as e:
                 raise Exception(f"Error: {e}")
