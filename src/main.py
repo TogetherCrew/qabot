@@ -58,7 +58,8 @@ search_tool = AgentTool(
 )
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
+    model_name="sentence-transformers/all-mpnet-base-v2")
+    # model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
 
 convo_tool = DiscordTool(
     name="conversations_raw",

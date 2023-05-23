@@ -85,7 +85,7 @@ class Agent(BaseModel):
         # self.task_manager.initialize_tasks(subquestions=[], tasks=[], current_task_id=0)
         # self.episodic_memory.initialize(num_episodes=0, store=None, embeddings=None, vector_store=None)
         # self.semantic_memory.initialize(num_episodes=0, embeddings=None, vector_store=None)
-        tm = self.sm.load_and_deserialize("task_manager")
+        tm = self.sm.load_and_deserialize(f"task_manager::{self.goal}")
         if tm is not None:
             self.ui.notify("INFO", "Task Manager loaded.")
             self.task_manager = tm
@@ -105,7 +105,8 @@ class Agent(BaseModel):
         return "agent_data.json" in os.listdir(absolute_path)
 
     def run(self):
-        if self.task_manager.subquestions is None:
+        # verify if subquestion its empty
+        if len(self.task_manager.subquestions) == 0:
             with self.ui.loading("Generate Subquestions..."):
                 # Get the relevant tools
                 # If agent has to much tools, use "remember_relevant_tools"
@@ -124,7 +125,7 @@ class Agent(BaseModel):
         self.ui.notify(title="SUBQUESTIONS",
                        message=self.task_manager.subquestions,
                        title_color="RED")
-        if self.task_manager.tasks is None:
+        if len(self.task_manager.tasks) == 0:
             with self.ui.loading("Generate Task Plan..."):
                 self.task_manager.generate_task_plan(
                     name=self.name,
@@ -135,7 +136,7 @@ class Agent(BaseModel):
                        message=self.task_manager.get_incomplete_tasks_string(),
                        title_color="BLUE")
 
-        self.sm.serialize_and_save(self.task_manager, "task_manager")
+        self.sm.serialize_and_save(self.task_manager, f"task_manager::{self.goal}")
 
         while True:
             current_task = self.task_manager.get_current_task_string()
