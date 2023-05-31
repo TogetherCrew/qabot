@@ -51,7 +51,7 @@ You are given the following task:
 {task}
 
 [TOOLS USAGE]
-You can ONLY ONE TOOL at a time and only tool that are listed below. Remember to use task_complete tool to mark the task as done.
+You can ONLY USE ONE TOOL at a time and only use tools that are listed below. Remember to use task_complete tool to mark the task as done.
 Format below:
 tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
@@ -78,7 +78,7 @@ You are given the following task:
 {task}
 
 [TOOLS USAGE]
-You can ONLY ONE TOOL at a time and only tool that are listed below. Remember to use task_complete tool to mark the task as done.
+You can ONLY USE ONE TOOL at a time and only use tools that are listed below. Remember to use task_complete tool to mark the task as done.
 Format below:
 tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 

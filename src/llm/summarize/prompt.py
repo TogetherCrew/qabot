@@ -55,8 +55,8 @@ This reminds you of related past events summarized:
 
 [INSTRUCTION]
  - Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [GOAL].
- - If not possible find the answer, return just: 'I don't know'.
- - If you think answering the [NEXT POSSIBLE TASKS] could definitely help you find the answer, return just: 'I don't know'. 
+ - If you think performing [NEXT POSSIBLE TASKS] will lead to a better answer, answer "continue"
+ - If it's not possible to find the answer, answer just "I don't know"
 
 [FINAL ANSWER]
 """
@@ -73,7 +73,7 @@ def get_final_answer_template() -> PromptTemplate:
     """ Use "name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "next_possible_tasks" """
     template = FINAL_ANSWER_TEMPLATE
     prompt_template = PromptTemplate(
-        input_variables=["name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes","next_possible_tasks"], template=template)
+        input_variables=["name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "    "], template=template)
     return prompt_template
 
 
