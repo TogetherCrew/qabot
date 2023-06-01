@@ -15,3 +15,5 @@ agent_data/
 
 *.lock
 vector_store/
+report*.md
+temp/

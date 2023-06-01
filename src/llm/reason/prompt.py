@@ -51,7 +51,34 @@ You are given the following task:
 {task}
 
 [TOOLS USAGE]
-You can ONLY ONE TOOL at a time and only tool that are listed below. Remember to use task_complete tool to mark the task as done.
+You can ONLY USE ONE TOOL at a time and only use tools that are listed below. Remember to use task_complete tool to mark the task as done.
+Format below:
+tool name: "tool description", arg1: <arg1>, arg2: <arg2>
+
+[TOOLS]
+task_complete: "If you think you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
+{tool_info}
+"""
+
+
+BASE_TEMPLATE2 = """
+You are {name}, {role}
+Your decisions must always be made independently without seeking user assistance or asking for anyone to help. 
+Pursue simple strategies to complete your tasks, use ONLY your TOOLS available, get at least 1 recent episode, and use your knowledge to complete your task.
+
+[GOAL]
+{goal}
+
+[INSIGHTS FROM THE PAST]
+This reminds you of related past events:
+{related_past_episodes}
+
+[YOUR TASK]
+You are given the following task:
+{task}
+
+[TOOLS USAGE]
+You can ONLY USE ONE TOOL at a time and only use tools that are listed below. Remember to use task_complete tool to mark the task as done.
 Format below:
 tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
@@ -89,8 +116,8 @@ def get_template(memory: List[Episode] = None) -> PromptTemplate:
     # If there are past conversation logs, append them
     if len(memory) > 0:
         # insert current time and date
-        recent_episodes = RECENT_EPISODES_TEMPLETE
-        RECENT_EPISODES_TEMPLETE += f"The current time and date is {time.strftime('%c')}"
+        recent_episodes = RECENT_EPISODES_TEMPLATE
+        recent_episodes += f"The current time and date is {time.strftime('%c')}"
 
         # insert past conversation logs
         for episode in memory:
@@ -109,7 +136,7 @@ def get_template(memory: List[Episode] = None) -> PromptTemplate:
     return PROMPT
 
 
-def get_chat_template(memory: List[Episode] = None) -> ChatPromptTemplate:
+def get_chat_template(memory: List[Episode] = None, should_summary=False) -> ChatPromptTemplate:
     messages = []
     messages.append(SystemMessagePromptTemplate.from_template(BASE_TEMPLATE))
 
@@ -117,14 +144,17 @@ def get_chat_template(memory: List[Episode] = None) -> ChatPromptTemplate:
     if len(memory) > 0:
         # insert current time and date
         recent_episodes = RECENT_EPISODES_TEMPLATE
-        recent_episodes += f"The current time and date is {time.strftime('%c')}:\n"
+        # recent_episodes += f"The current time and date is {time.strftime('%c')}:\n"
 
-        # insert past conversation logs
-        for episode in memory:
-            thoughts_str = json.dumps(episode.thoughts)
-            action_str = json.dumps(episode.action)
-            result = episode.result
-            recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
+        if should_summary:
+            recent_episodes = Episode.get_summary_of_episodes(memory)
+        else:
+            # insert past conversation logs
+            for episode in memory:
+                thoughts_str = json.dumps(episode.thoughts)
+                action_str = json.dumps(episode.action)
+                result = episode.result
+                recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
 
         messages.append(SystemMessage(content=recent_episodes))
     messages.append(SystemMessage(content=SCHEMA_TEMPLATE))

@@ -1,11 +1,9 @@
 from enum import Enum
-import inspect
-import json
+# import inspect
+import json, os
 from langchain.vectorstores import DeepLake
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
-from pydantic import Field, Extra, validator, BaseModel
-from typing import Any, Callable, Dict, Optional
 
 from tools.base import AgentTool
 
@@ -15,7 +13,7 @@ class ConvoType(Enum):
     SUMMARY = "summary"
 
 
-VECSTORE_DIR = "vector_store/"
+VECSTORE_DIR = os.path.join(os.path.dirname(__file__), "../vector_store/")
 
 
 class DiscordTool(AgentTool):
@@ -29,10 +27,10 @@ class DiscordTool(AgentTool):
                          user_permission_required=user_permission_required, **kwargs)
 
         if convo_type == ConvoType.RAW:
-            self._db = DeepLake(dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_raw_messages_HF",
+            self._db = DeepLake(dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_raw_messages_HF_v2",
                                 read_only=True, embedding_function=embeddings)
         elif convo_type == ConvoType.SUMMARY:
-            self._db = DeepLake(dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_summaries_HF",
+            self._db = DeepLake(dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_summaries_HF_v2",
                                 read_only=True, embedding_function=embeddings)
 
     # metadata:{"date": "2023-05-01", "channel": "back_end", "thread": "123", "author": "n", "index": "1"}

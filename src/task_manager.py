@@ -21,6 +21,8 @@ class Task(BaseModel):
     description: str = Field(..., description="Task description")
     is_done: bool = Field(False, description="Task done or not")
     result: str = Field("", description="The result of the task")
+    last_tool_name: str = Field(None, description="Last tool name")
+    last_tool_args: str = Field(None, description="Last tool args")
 
 
 class TaskManager(BaseModel):
@@ -54,8 +56,6 @@ class TaskManager(BaseModel):
         # Add tasks with a serial number
         for subquestion in result_list:
             self.subquestions.append(f"- {subquestion}")
-
-        self
 
     def generate_task_plan(self, name: str, role: str, goal: str):
         """Generate a task plan for the agent."""
@@ -142,3 +142,12 @@ class TaskManager(BaseModel):
         for task in self.get_incomplete_tasks():
             result += self._task_to_string(task) + "\n"
         return result
+
+    def is_action_already_used_in_current_task(self, tool_name, args):
+        current_task = self.get_current_task()
+        if current_task and current_task.last_tool_name == tool_name and current_task.last_tool_args == args:
+            return True
+        current_task.last_tool_name = tool_name
+        current_task.last_tool_args = args
+        return False
+    

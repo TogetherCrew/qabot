@@ -1,27 +1,16 @@
 # first import
 import os
-os.environ["LANGCHAIN_HANDLER"] = "langchain"
-from typing import Dict, Optional
+# os.environ["LANGCHAIN_HANDLER"] = "langchain"
 
 from tools.discord import ConvoType, DiscordTool
-
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.document_loaders import TextLoader
-from langchain.vectorstores import DeepLake
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.utilities import GoogleSearchAPIWrapper
 from ui.cui import CommandlineUserInterface
 from tools.base import AgentTool
 from agent import Agent
-from zmq import device
 from dotenv import load_dotenv
 from langchain.embeddings import HuggingFaceEmbeddings
-import json
-from ast import arg
-from sentence_transformers import SentenceTransformer
-from langchain.docstore.document import Document
 
 
 # first import
@@ -42,23 +31,23 @@ AGENT_ROLE = os.getenv("AGENT_ROLE", "")
 assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
 AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
 assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
-AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
-assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
+# AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
+# assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 
-
-llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY)
+llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY) # type: ignore
 openaichat = ChatOpenAI(temperature=0.0,
-                        openai_api_key=OPENAI_API_KEY)  # Optional
+                        openai_api_key=OPENAI_API_KEY)  # type: ignore # Optional
 
 ### 1.Create Agent ###
-dir = AGENT_DIRECTORY
+# dir = AGENT_DIRECTORY
 
 
 ### 2. Set up tools for agent ###
 search = GoogleSearchAPIWrapper()
+
 search_tool = AgentTool(
     name="google_search",
     func=search.run,
@@ -69,7 +58,8 @@ search_tool = AgentTool(
 )
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
+    model_name="sentence-transformers/all-mpnet-base-v2")
+    # model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
 
 convo_tool = DiscordTool(
     name="conversations_raw",
@@ -104,10 +94,9 @@ agent = Agent(
     role=AGENT_ROLE,
     goal=AGENT_OBJECTIVE,
     ui=CommandlineUserInterface(),
-    openai_api_key=OPENAI_API_KEY,
     llm=llm,
     openaichat=openaichat,
-    dir=dir
+    # dir=dir
 )
 ## 3. Momoize usage of tools to agent ###
 agent.prodedural_memory.memorize_tools([convo_tool_summary, convo_tool])

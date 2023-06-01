@@ -14,6 +14,14 @@ class Episode(BaseModel):
     result: str = Field(..., description="The plan of the event")
     summary: str = Field("", description="summary of the event")
 
+    # create like equals method to compare two episodes
+    def __eq__(self, other):
+        return self.thoughts == other.thoughts and self.action == other.action and self.result == other.result
+    
+    @staticmethod
+    def get_summary_of_episodes(episodes: List["Episode"]) -> str:
+        return "\n".join([episode.summary for episode in episodes])
+
 
 class EpisodicMemory(BaseModel):
     num_episodes: int = Field(0, description="The number of episodes")

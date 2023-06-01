@@ -125,9 +125,12 @@ class LLMJsonOutputParser(BaseModel):
         Fix the given JSON string to make it parseable and fully complient with the provided schema.
         """
         try:
+            print(f"trying fix json_str: {json_str}")
             fixed_json_str = auto_fix_json(json_str, schema)
-        except Exception as e:
-            raise FixJsonException(e)
+        except Exception:
+            import traceback
+            call_stack = traceback.format_exc()
+            raise FixJsonException(f"Failed to fix JSON: '{json_str}' " + call_stack)
         try:
             # print(f"fixed_json_str: {fixed_json_str}")
             json.loads(fixed_json_str)
@@ -135,7 +138,7 @@ class LLMJsonOutputParser(BaseModel):
         except Exception:
             import traceback
             call_stack = traceback.format_exc()
-            raise FixJsonException(f"Failed to fix JSON: '{json_str}' " + call_stack)
+            raise FixJsonException(f"Failed to load JSON: '{fixed_json_str}' " + call_stack)
 
     @staticmethod
     def _extract_char_position(error_message: str) -> int:
