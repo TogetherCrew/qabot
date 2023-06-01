@@ -6,6 +6,7 @@ describe("QABot", function () {
     const ContractFactory = await ethers.getContractFactory("QABot");
 
     const instance = await upgrades.deployProxy(ContractFactory);
+    ("");
     await instance.deployed();
 
     expect(await instance.name()).to.equal("QABot");

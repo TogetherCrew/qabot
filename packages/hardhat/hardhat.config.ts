@@ -15,17 +15,22 @@ const config: HardhatUserConfig = {
       },
     },
   },
-
+  defaultNetwork: "mumbai",
   networks: {
     // gnosis: {
     //   url: "https://rpc.gnosischain.com",
     //   chainId: 100,
     //   // accounts: [process.env.PK!],
     // },
+    goerli: {
+      url: `${process.env.GOERLI_RPC_URL}`,
+      chainId: 5,
+      accounts: [process.env.PK!],
+    },
     mumbai: {
-      url: "https://polygon-mumbai-bor.publicnode.com",
+      url: `${process.env.MUMBAI_RPC_URL}`,
       chainId: 80001,
-      // accounts: [process.env.PK!],
+      accounts: [process.env.PK!],
     },
     matic: {
       url: "https://polygon.llamarpc.com",
@@ -40,7 +45,9 @@ const config: HardhatUserConfig = {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: {
-      gnosis: process.env.GNOSISSCAN_API_KEY!,
+      // gnosis: process.env.ETHERSCAN_API_KEY!,
+      goerli: process.env.ETHERSCAN_API_KEY!,
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY!,
     },
   },
 };
