@@ -1,0 +1,34 @@
+{
+	"folders": [
+		{
+			"name": "Root",
+			"path": "."
+		},
+		{
+			"name": "ML",
+			"path": "packages/ml"
+		},
+		{
+			"name": "Hardhat",
+			"path": "packages/hardhat"
+		},
+		{
+			"name": "WebApp",
+			"path": "packages/webapp",
+		}
+	],
+	"settings": {
+		"solidity.remappings": [
+			"@openzeppelin/=packages/hardhat/node_modules/@openzeppelin/"
+		]
+	},
+	"extensions": {
+		"recommendations": [
+			"juanblanco.solidity",
+			"tintinweb.solidity-visual-auditor",
+			"tintinweb.solidity-metrics",
+			"tintinweb.vscode-solidity-flattener",
+			"esbenp.prettier-vscode"
+		]
+	}
+}
