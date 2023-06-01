@@ -14,20 +14,34 @@ async function main() {
   // console.log(`Proxy deployed to ${instance.address}`);
   console.log(`Proxy deployed to ${instance.address}`);
 
-  // const contractFullyQualifedName = `contracts/${contractName}.sol:${contractName}`;
+  const IMPL_SLOT =
+    "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 
-  // console.log("hre", hre.network.name);
+  let implementationAddress = await ethers.provider.getStorageAt(
+    instance.address,
+    // "0x098FeAFa9D8C7a932655D724406b7AF33368b8a7",
+    IMPL_SLOT
+  );
 
-  // const constructorArgs: any[] = [];
+  implementationAddress = implementationAddress.slice(26);
+  implementationAddress = "0x" + implementationAddress;
 
-  // console.log("constructorArgs", constructorArgs);
+  console.log(`Implementation deployed to ${implementationAddress}`);
 
-  // const result = await hre.run("verify:verify", {
-  //   address: instance.address,
-  //   contract: contractFullyQualifedName,
-  //   constructorArguments: constructorArgs,
-  // });
-  // console.log("result", result);
+  console.log(`Verifiying... on network: ${hre.network.name}`);
+
+  const contractFullyQualifedName = `contracts/${contractName}.sol:${contractName}`;
+
+  const constructorArgs: any[] = [];
+
+  console.log("constructorArgs", constructorArgs);
+
+  const result = await hre.run("verify:verify", {
+    address: implementationAddress,
+    contract: contractFullyQualifedName,
+    constructorArguments: constructorArgs,
+  });
+  console.log("result", result);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
