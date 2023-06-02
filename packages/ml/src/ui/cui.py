@@ -64,7 +64,7 @@ class CommandlineUserInterface(BaseHumanUserInterface):
 
     async def stream(self, title: str, message: str):
         """Print a notification to the user"""
-        await self._call_callback(f"{title}:{message}")
+        await self._call_callback(f"{f'{title}:' if title else ''}{message}")
 
     async def _call_callback(self, message: str):
         if self.callback is not None:
@@ -83,7 +83,9 @@ class CommandlineUserInterface(BaseHumanUserInterface):
         return self.Spinner(message=message, delay=delay)
 
     def _print_message(self, title: str, message: str, title_color: Color) -> None:
-        print(f"{title_color.value}{title}{Color.COLOR_DEFAULT.value}: {message}")
+        print(
+            f"{f'{title_color.value}{title}{Color.COLOR_DEFAULT.value}:' if title else ''} {message}"
+        )
 
     class Spinner(AsyncContextManager):
         """A simple spinner class"""

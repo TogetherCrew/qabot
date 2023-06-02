@@ -137,6 +137,9 @@ class Agent(BaseModel):
             await asyncio.sleep(0.05)
 
             # self.ui.callback = callback
+        tool_info = self.prodedural_memory.tools_to_prompt(
+            self.prodedural_memory.remember_all_tools()
+        )
         # verify if subquestion its empty
         if len(self.task_manager.subquestions) == 0:
             await self.ui.notify(
@@ -146,18 +149,16 @@ class Agent(BaseModel):
             # If agent has to much tools, use "remember_relevant_tools"
             # because too many tool information will cause context windows overflow.
             # Set up the prompt
-            print("Started")
-            tool_info = self.prodedural_memory.tools_to_prompt(
-                self.prodedural_memory.remember_all_tools()
-            )
-            print("Preparing to call generate_subquestions")
+            # print("Started")
+
+            # print("Preparing to call generate_subquestions")
             await self.task_manager.generate_subquestions(
                 name=self.name,
                 role=self.role,
                 goal=self.goal,
                 tool_info=tool_info,
             )
-            print("Finished calling generate_subquestions")
+            # print("Finished calling generate_subquestions")
 
         await self.ui.notify(
             title="SUBQUESTIONS",
@@ -168,7 +169,10 @@ class Agent(BaseModel):
             await self.ui.notify(stream=True, title="", message="Generate Task Plan...")
 
             await self.task_manager.generate_task_plan(
-                name=self.name, role=self.role, goal=self.goal
+                name=self.name,
+                role=self.role,
+                goal=self.goal,
+                tool_info=tool_info,
             )
         await self.ui.notify(
             title="ALL TASKS",

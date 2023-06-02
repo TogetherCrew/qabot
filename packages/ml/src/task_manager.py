@@ -1,8 +1,6 @@
-import json
-from pydantic import BaseModel, Field
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
-from typing import List, Any
+from typing import List
 from langchain import LLMChain
 from llm.generate_task_plan.prompt import get_subquestions_template, get_template
 from llm.list_output_parser import LLMListOutputParser
@@ -50,7 +48,7 @@ class TaskManager(BaseModel):
 
         # Parse and validate the result
         try:
-            result_list = LLMListOutputParser.parse(result, separeted_string="\t")
+            result_list = LLMListOutputParser.parse(result, separeted_string=",")
         except Exception as e:
             raise Exception("Error: " + str(e))
 
@@ -58,13 +56,17 @@ class TaskManager(BaseModel):
         for subquestion in result_list:
             self.subquestions.append(f"- {subquestion}")
 
-    async def generate_task_plan(self, name: str, role: str, goal: str):
+    async def generate_task_plan(self, name: str, role: str, goal: str, tool_info: str):
         """Generate a task plan for the agent."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
             result = await llm_chain.apredict(
-                name=name, role=role, goal=goal, subquestions_list=self.subquestions
+                name=name,
+                role=role,
+                goal=goal,
+                subquestions_list=self.subquestions,
+                tool_info=tool_info,
             )
 
         except Exception as e:

@@ -1,5 +1,6 @@
 # first import
 import os
+import asyncio
 
 # os.environ["LANGCHAIN_HANDLER"] = "langchain"
 
@@ -102,6 +103,8 @@ def load():
     ## 3. Momoize usage of tools to agent ###
     agent.prodedural_memory.memorize_tools([convo_tool_summary, convo_tool])
 
-    # ## 4.Run agent ###
-    # agent.run()
     return agent
+
+
+if __name__ == "__main__":
+    asyncio.run(load().run())
