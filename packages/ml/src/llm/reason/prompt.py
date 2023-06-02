@@ -51,7 +51,7 @@ tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
 [TOOLS]
 task_complete: "If you think you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
-discard_task: "If you think you can't find the answer and the next task is promising, please use this tool to discard and go next task"
+discard_task: "If you think you can't find the answer, please use this tool to discard and go next task"
 {tool_info}
 """
 
