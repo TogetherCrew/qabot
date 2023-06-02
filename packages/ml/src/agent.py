@@ -1,6 +1,6 @@
+import asyncio
 import os
 import json
-from turtle import title
 import tiktoken
 from typing import Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
@@ -9,7 +9,6 @@ from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
 from serializer_manager import SerializationManager
-from ui.base import BaseHumanUserInterface
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
 from task_manager import TaskManager
@@ -18,6 +17,10 @@ from llm.reason.schema import JsonSchema as ReasonSchema
 from langchain.llms.base import BaseLLM
 from langchain import LLMChain
 from langchain.chat_models import ChatOpenAI
+
+
+from langchain.callbacks import AsyncIteratorCallbackHandler
+
 
 # Define the default values
 DEFAULT_AGENT_DIR = os.path.join(os.path.dirname(__file__), "agent_data")
@@ -35,27 +38,39 @@ class Agent(BaseModel):
     """
     This is the main class for the Agent. It is responsible for managing the tools and the agent.
     """
+
     # Define the tools
     dir: Optional[str] = Field(
-        DEFAULT_AGENT_DIR, description="The folder path to the directory where the agent data is stored and saved")
+        DEFAULT_AGENT_DIR,
+        description="The folder path to the directory where the agent data is stored and saved",
+    )
     name: str = Field(..., description="The name of the agent")
     role: str = Field(..., description="The role of the agent")
     goal: str = Field(..., description="The goal of the agent")
-    ui: BaseHumanUserInterface = Field(
-        CommandlineUserInterface(), description="The user interface for the agent")
+    ui: CommandlineUserInterface = Field(
+        CommandlineUserInterface(), description="The user interface for the agent"
+    )
     llm: BaseLLM = Field(..., description="llm class for the agent")
     openaichat: Optional[ChatOpenAI] = Field(
-        None, description="ChatOpenAI class for the agent")
+        None, description="ChatOpenAI class for the agent"
+    )
     prodedural_memory: ProcedualMemory = Field(
-        ProcedualMemory(), description="The procedural memory about tools agent uses")
+        ProcedualMemory(), description="The procedural memory about tools agent uses"
+    )
     episodic_memory: EpisodicMemory = Field(
-        None, description="The short term memory of the agent")
+        None, description="The short term memory of the agent"
+    )
     semantic_memory: SemanticMemory = Field(
-        None, description="The long term memory of the agent")
+        None, description="The long term memory of the agent"
+    )
     task_manager: TaskManager = Field(
-        None, description="The task manager for the agent")
+        None, description="The task manager for the agent"
+    )
 
-    sm: SerializationManager = Field(SerializationManager(base_path=BASE_PATH_SERIALIZATION), description="The serialization manager for the agent")
+    sm: SerializationManager = Field(
+        SerializationManager(base_path=BASE_PATH_SERIALIZATION),
+        description="The serialization manager for the agent",
+    )
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -76,9 +91,10 @@ class Agent(BaseModel):
             if load_data:
                 self.load_agent()
             else:
-                self.ui.notify("INFO", "Agent data will be overwritten.")
-        self.ui.notify(
-            "START", f"Hello, I am {self.name}. {self.role}. My goal is {self.goal}.")
+                print("INFO", "Agent data will be overwritten.")
+                # await self.ui.notify("INFO", "Agent data will be overwritten.")
+        # self.ui.notify(
+        #     "START", f"Hello, I am {self.name}. {self.role}. My goal is {self.goal}.")
 
         # Fix: add missing arguments to the following method calls
         # self.task_manager.initialize_tasks(subquestions=[], tasks=[], current_task_id=0)
@@ -86,12 +102,14 @@ class Agent(BaseModel):
         # self.semantic_memory.initialize(num_episodes=0, embeddings=None, vector_store=None)
         tm = self.sm.load_and_deserialize(f"task_manager::{self.goal}")
         if tm is not None:
-            self.ui.notify("INFO", "Task Manager loaded.")
+            # self.ui.notify("INFO", "Task Manager loaded.")
+            print("INFO", "Task Manager loaded.")
             self.task_manager = tm
         else:
-            self.ui.notify("INFO", "Task Manager not loaded.")
+            # self.ui.notify("INFO", "Task Manager not loaded.")
+            print("INFO", "Task Manager not loaded.")
 
-    def _get_absolute_path(self) -> None:
+    def _get_absolute_path(self):
         return os.path.abspath(self.dir)
 
     def _create_dir_if_not_exists(self) -> None:
@@ -103,116 +121,166 @@ class Agent(BaseModel):
         absolute_path = self._get_absolute_path()
         return "agent_data.json" in os.listdir(absolute_path)
 
-    def run(self, goal: str = None, callback: Any = None) -> None:
+    async def run(
+        self,
+        goal: Union[str, None] = None,
+        callback: Union[AsyncIteratorCallbackHandler, None] = None,
+    ):
         if goal is not None:
             self.goal = goal
         if self.goal is None:
-            self.ui.notify("ERROR", "Goal is not set.")
+            await self.ui.notify("ERROR", "Goal is not set.")
             return
+        if callback is not None:
+            self.ui.callback = callback
+            await callback.on_llm_new_token("Thinking...")
+            await asyncio.sleep(0.05)
+
+            # self.ui.callback = callback
         # verify if subquestion its empty
         if len(self.task_manager.subquestions) == 0:
-            with self.ui.loading("Generate Subquestions..."):
-                # Get the relevant tools
-                # If agent has to much tools, use "remember_relevant_tools"
-                # because too many tool information will cause context windows overflow.
-                # Set up the prompt
-                tool_info = self.prodedural_memory.tools_to_prompt(
-                    self.prodedural_memory.remember_all_tools())
+            await self.ui.notify(
+                stream=True, title="", message="Generate Subquestions..."
+            )
+            # Get the relevant tools
+            # If agent has to much tools, use "remember_relevant_tools"
+            # because too many tool information will cause context windows overflow.
+            # Set up the prompt
+            print("Started")
+            tool_info = self.prodedural_memory.tools_to_prompt(
+                self.prodedural_memory.remember_all_tools()
+            )
+            print("Preparing to call generate_subquestions")
+            await self.task_manager.generate_subquestions(
+                name=self.name,
+                role=self.role,
+                goal=self.goal,
+                tool_info=tool_info,
+            )
+            print("Finished calling generate_subquestions")
 
-                self.task_manager.generate_subquestions(
-                    name=self.name,
-                    role=self.role,
-                    goal=self.goal,
-                    tool_info=tool_info,
-                )
-
-        self.ui.notify(title="SUBQUESTIONS",
-                       message=self.task_manager.subquestions,
-                       title_color="RED")
+        await self.ui.notify(
+            title="SUBQUESTIONS",
+            message=self.task_manager.subquestions.__str__(),
+            title_color="RED",
+        )
         if len(self.task_manager.tasks) == 0:
-            with self.ui.loading("Generate Task Plan..."):
-                self.task_manager.generate_task_plan(
-                    name=self.name,
-                    role=self.role,
-                    goal=self.goal
-                )
-        self.ui.notify(title="ALL TASKS",
-                       message=self.task_manager.get_incomplete_tasks_string(),
-                       title_color="BLUE")
+            await self.ui.notify(stream=True, title="", message="Generate Task Plan...")
 
-        self.sm.serialize_and_save(self.task_manager, f"task_manager::{self.goal}")
+            await self.task_manager.generate_task_plan(
+                name=self.name, role=self.role, goal=self.goal
+            )
+        await self.ui.notify(
+            title="ALL TASKS",
+            message=self.task_manager.get_incomplete_tasks_string(),
+            title_color="BLUE",
+        )
+
+        await self.sm.serialize_and_save(
+            self.task_manager, f"task_manager::{self.goal}"
+        )
         while True:
             current_task = self.task_manager.get_current_task_string()
             if current_task:
-                self.ui.notify(title="CURRENT TASK",
-                               message=current_task,
-                               title_color="BLUE")
+                await self.ui.notify(
+                    title="CURRENT TASK", message=current_task, title_color="BLUE"
+                )
             else:
-                self.ui.notify(title="FINISH",
-                               message=f"All tasks are completed. {self.name} will end the operation.",
-                               title_color="RED")
+                await self.ui.notify(
+                    title="FINISH",
+                    message=f"All tasks are completed. {self.name} will end the operation.",
+                    title_color="RED",
+                )
 
-                with self.ui.loading("Final answer..."):
-                    self._final_answer()
-                    break
+                await self.ui.notify(stream=True, title="", message="Final answer...")
+                await self._final_answer()
+                break
 
             # ReAct: Reasoning
-            with self.ui.loading("Thinking..."):
-                should_try_complete = False
-                keep_it = True
-                tool_name = None
-                while keep_it:
-                    keep_it = False
-                    reasoning_result = None
-                    try:
-                        reasoning_result = self._reason(should_try_complete=should_try_complete)
-                        thoughts = reasoning_result["thoughts"]
-                        action = reasoning_result["action"]
-                        tool_name = action["tool_name"]
-                        args = action["args"]
-                        self.ui.notify(title="TASK", message=thoughts["task"])
-                        self.ui.notify(title="OBSERVATION", message=reasoning_result["observation"])
-                        self.ui.notify(title="IDEA", message=thoughts["idea"])
-                        self.ui.notify(title="REASONING", message=thoughts["reasoning"])
-                        self.ui.notify(title="CRITICISM", message=thoughts["criticism"])
-                        # self.ui.notify(title="PAST_TOOL_USED", message=thoughts["past_tool_used"])
-                        self.ui.notify(title="THOUGHT", message=thoughts["summary"])
-                        self.ui.notify(title="NEXT ACTION", message=action)
-                    except Exception as e:
-                        self.ui.notify(title="REASONING ERROR", message=str(reasoning_result), title_color="RED")
-                        raise e
+            await self.ui.notify(stream=True, title="", message="Thinking...")
+            should_try_complete = False
+            keep_it = True
+            tool_name = None
+            while keep_it:
+                keep_it = False
+                reasoning_result: Union[Dict[str, Any], str] = None
+                try:
+                    reasoning_result = await self._reason(
+                        should_try_complete=should_try_complete
+                    )  # type: ignore
+                    thoughts = reasoning_result["thoughts"]  # type: ignore
+                    action = reasoning_result["action"]  # type: ignore
+                    tool_name = action["tool_name"]  # type: ignore
+                    args = action["args"]  # type: ignore
+                    await self.ui.notify(title="TASK", message=thoughts["task"])  # type: ignore
+                    await self.ui.notify(
+                        title="OBSERVATION", message=reasoning_result["observation"]  # type: ignore
+                    )
+                    await self.ui.notify(title="IDEA", message=thoughts["idea"])  # type: ignore
+                    await self.ui.notify(
+                        title="REASONING", message=thoughts["reasoning"]  # type: ignore
+                    )
+                    await self.ui.notify(
+                        title="CRITICISM", message=thoughts["criticism"]  # type: ignore
+                    )
+                    await self.ui.notify(
+                        title="PAST_TOOL_USED", message=thoughts["past_tool_used"]
+                    )
+                    await self.ui.notify(stream=True, title="THOUGHT", message=thoughts["summary"])  # type: ignore
+                    await self.ui.notify(title="NEXT ACTION", message=action)
+                except Exception as e:
+                    await self.ui.notify(
+                        title="REASONING ERROR",
+                        message=str(reasoning_result),
+                        title_color="RED",
+                    )
+                    raise e
 
-                    # check if the tool_name and args already was used in the past in that task.
-                    # if so, skip the action.
-                    if self.task_manager.is_action_already_used_in_current_task(tool_name, args):  # TODO FIX: should be a list of args instead of the last one
-                        self.ui.notify(title="SKIP ACTION", title_color="RED", message=f"{tool_name} {args} is already used in the current task. Try complete the task!")
-                        should_try_complete = True
-                        keep_it = True
-                    else:
-                        self.ui.notify(title="BREAK", title_color="RED", message="Continue")
+                # check if the tool_name and args already was used in the past in that task.
+                # if so, skip the action.
+                if self.task_manager.is_action_already_used_in_current_task(
+                    tool_name, args
+                ):  # TODO FIX: should be a list of args instead of the last one
+                    await self.ui.notify(
+                        title="SKIP ACTION",
+                        title_color="RED",
+                        message=f"{tool_name} {args} is already used in the current task. Try complete the task!",
+                    )
+                    should_try_complete = True
+                    keep_it = True
+                else:
+                    await self.ui.notify(
+                        title="BREAK", title_color="RED", message="Continue"
+                    )
 
-                    if tool_name == "task_complete":
-                        self.ui.notify(title="BREAK", title_color="RED", message="Task is completed.")
-                        break
+                if tool_name == "task_complete":
+                    await self.ui.notify(
+                        title="BREAK",
+                        title_color="RED",
+                        message="Task is completed.",
+                    )
+                    break
 
             # Task Complete
             if tool_name == "task_complete":
                 action_result = args["result"]  # todo: check if result is correct
                 # todo: check if list of TASK need be updated
-                self._task_complete(action_result)
+                await self._task_complete(action_result)
 
                 # run final prompt here
 
-                with self.ui.loading("Try final answer..."):
-                    result = self._final_answer()
-                    # trim result
-                    if result and "I don't know." not in result.strip():
-                        self.ui.notify(title="END", message="")
-                        break
+                await self.ui.notify(
+                    stream=True, title="", message="Try final answer..."
+                )
+                result = await self._final_answer()
+                # trim result
+                if result and "I don't know." not in result.strip():
+                    await self.ui.notify(title="END", message="")
+                    break
 
                 # save agent data
-                with self.ui.loading("Save agent data..."):
-                    self.save_agent()
+                await self.ui.notify(title="", message="Save agent data...")
+                self.save_agent()
 
             # Action with tools
             else:
@@ -222,130 +290,152 @@ class Agent(BaseModel):
 
                     if not tool:
                         raise Exception(
-                            f"Tool {tool_name} is not found in the procedural memory.")
+                            f"Tool {tool_name} is not found in the procedural memory."
+                        )
 
-                    def act(tool_name, args):
+                    async def act(tool_name, args):
                         try:
                             action_result = self._act(tool_name, args)
                         except Exception as e:
                             raise e
-                        self.ui.notify(title="ACTION RESULT", message=action_result)
+                        await self.ui.notify(
+                            title="ACTION RESULT", message=action_result
+                        )
                         return action_result
 
-                    self.ui.notify(
-                        title="LOG", message=f"Tool: {tool_name} user_permission_required:{tool.user_permission_required}")
+                    await self.ui.notify(
+                        title="LOG",
+                        message=f"Tool: {tool_name} user_permission_required:{tool.user_permission_required}",
+                    )
                     if tool.user_permission_required:
                         # Ask for permission to run the action
                         user_permission = self.ui.get_binary_user_input(
-                            "Do you want to continue?")
+                            "Do you want to continue?"
+                        )
                         if not user_permission:
                             action_result = "User Denied to run Action"
-                            self.ui.notify(title="USER INPUT", message=action_result)
+                            await self.ui.notify(
+                                title="USER INPUT", message=action_result
+                            )
                         else:
-                            action_result = act(tool_name, args)
+                            action_result = await act(tool_name, args)
                     else:
-                        action_result = act(tool_name, args)
+                        action_result = await act(tool_name, args)
                 except ToolNotFoundException:
-                    self.ui.notify(
-                        title="LOG", message=f"Tool {tool_name} not exist. Pick one tool [TOOL] from the list.")
+                    await self.ui.notify(
+                        title="LOG",
+                        message=f"Tool {tool_name} not exist. Pick one tool [TOOL] from the list.",
+                    )
                     action_result = f"Tool {tool_name} not exist. Pick one tool [TOOL] from the list."
                     pass
                 except Exception as e:
                     raise e
 
             episode = Episode(
-                thoughts=thoughts,
-                action=action,
-                result=action_result
+                thoughts=thoughts, action=action, result=action_result
             )  # type: ignore
 
-            summary = self.episodic_memory.summarize_and_memorize_episode(episode)
-            self.ui.notify(title="MEMORIZE NEW EPISODE",
-                           message=summary, title_color="blue")
+            summary = await self.episodic_memory.summarize_and_memorize_episode(episode)
+            await self.ui.notify(
+                title="MEMORIZE NEW EPISODE", message=summary, title_color="blue"
+            )
 
-            entities = self.semantic_memory.extract_entity(action_result)
-            self.ui.notify(title="MEMORIZE NEW KNOWLEDGE",
-                           message=entities, title_color="blue")
+            entities = await self.semantic_memory.extract_entity(action_result)
+            await self.ui.notify(
+                title="MEMORIZE NEW KNOWLEDGE",
+                message=entities.__str__(),
+                title_color="blue",
+            )
 
-    def _final_answer(self) -> str:
+    async def _final_answer(self) -> str:
         final_prompt = get_final_answer_template()
 
         completed_tasks = self.task_manager.get_completed_tasks()
         all_related_knowledge = dict()
         for task in completed_tasks:
             related_knowledge = self.semantic_memory.remember_related_knowledge(
-                task.description,
-                k=5
+                task.description, k=5
             )
             all_related_knowledge.update(related_knowledge)
 
         all_related_past_episodes = ""
         for task in completed_tasks:
             related_past_episodes = self.episodic_memory.remember_related_episodes(
-                task.description,
-                k=2
+                task.description, k=2
             )
             summary_of_related_past_episodes = ("\n").join(
-                [past.summary for past in related_past_episodes])
+                [past.summary for past in related_past_episodes]
+            )
             all_related_past_episodes += f"\n{summary_of_related_past_episodes}"
 
-        input_variables = {"name": self.name,
-                           "role": self.role,
-                           "goal": self.goal,
-                           "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
-                           "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
-                           "related_knowledge": all_related_knowledge,
-                           "related_past_episodes": all_related_past_episodes,
-                           "next_possible_tasks": self.task_manager.get_incomplete_tasks_string()}
+        input_variables = {
+            "name": self.name,
+            "role": self.role,
+            "goal": self.goal,
+            "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
+            "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
+            "related_knowledge": all_related_knowledge,
+            "related_past_episodes": all_related_past_episodes,
+            "next_possible_tasks": self.task_manager.get_incomplete_tasks_string(),
+        }
 
-        final_prompt_formatted = final_prompt.format_prompt(
-            **input_variables)
-        self.ui.notify(title="FINAL PROMPT", message=final_prompt_formatted.to_string())
+        final_prompt_formatted = final_prompt.format_prompt(**input_variables)
+        await self.ui.notify(
+            title="FINAL PROMPT", message=final_prompt_formatted.to_string()
+        )
 
         llm_chain = LLMChain(prompt=final_prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(**input_variables)
+            result = await llm_chain.apredict(**input_variables)
         except Exception as e:
             raise Exception(f"Error: {e}")
 
         if result:
-            self.ui.notify(title="FINAL ANSWER", message=result, title_color="RED")  # type: ignore
+            await self.ui.notify(stream=True, title="FINAL ANSWER", message=result, title_color="RED")  # type: ignore
         return result
 
-    def _reason(self, should_try_complete=False, should_summary=False) -> Union[str, Dict[Any, Any]]:
+    async def _reason(self, should_try_complete=False, should_summary=False):
         keep_it = True
         while keep_it:
             keep_it = False
             current_task_description = self.task_manager.get_current_task_string()
 
             # Retrie task related memories
-            with self.ui.loading("Retrieve memory..."):
-                # Retrieve memories related to the task.
-                related_past_episodes = self.episodic_memory.remember_related_episodes(
-                    current_task_description,
-                    k=2)
+            await self.ui.notify(stream=True, title="", message="Retrieving memory...")
+            # Retrieve memories related to the task.
+            related_past_episodes = self.episodic_memory.remember_related_episodes(
+                current_task_description, k=2
+            )
 
-                # Get the recent episodes
-                memory = self.episodic_memory.remember_recent_episodes(2)
+            # Get the recent episodes
+            memory = self.episodic_memory.remember_recent_episodes(2)
 
-                # remove from memory the episodes equals in the related_past_episodes
-                memory = [m for m in memory if m not in related_past_episodes]
+            # remove from memory the episodes equals in the related_past_episodes
+            memory = [m for m in memory if m not in related_past_episodes]
 
-                if len(related_past_episodes) > 0:
-                    self.ui.notify(title="TASK RELATED EPISODE", message=related_past_episodes)
-
-                    if should_summary:
-                        summary_of_related_past_episodes = Episode.get_summary_of_episodes(related_past_episodes)
-                        self.ui.notify(title="SUMMARY OF TASK RELATED EPISODES", message=summary_of_related_past_episodes)
-                        related_past_episodes = summary_of_related_past_episodes
-
-                # Retrieve concepts related to the task.
-                related_knowledge = self.semantic_memory.remember_related_knowledge(
-                    current_task_description,
-                    k=5
+            if len(related_past_episodes) > 0:
+                await self.ui.notify(
+                    title="TASK RELATED EPISODE", message=related_past_episodes
                 )
-                if len(related_knowledge) > 0:
-                    self.ui.notify(title="TASK RELATED KNOWLEDGE", message=related_knowledge)
+
+                if should_summary:
+                    summary_of_related_past_episodes = Episode.get_summary_of_episodes(
+                        related_past_episodes
+                    )
+                    await self.ui.notify(
+                        title="SUMMARY OF TASK RELATED EPISODES",
+                        message=summary_of_related_past_episodes,
+                    )
+                    related_past_episodes = summary_of_related_past_episodes
+
+            # Retrieve concepts related to the task.
+            related_knowledge = self.semantic_memory.remember_related_knowledge(
+                current_task_description, k=5
+            )
+            if len(related_knowledge) > 0:
+                await self.ui.notify(
+                    title="TASK RELATED KNOWLEDGE", message=related_knowledge.__str__()
+                )
 
             tool_info = "\n You should use task_complete to complete the task now."
             if not should_try_complete:
@@ -359,31 +449,46 @@ class Agent(BaseModel):
 
             # If OpenAI Chat is available, it is used for higher accuracy results.
             if self.openaichat:
-                prompt = ReasonPrompt.get_chat_template(memory=memory, should_summary=should_summary).format_prompt(
+                prompt = ReasonPrompt.get_chat_template(
+                    memory=memory, should_summary=should_summary
+                ).format_prompt(
                     name=self.name,
                     role=self.role,
                     goal=self.goal,
                     related_past_episodes=related_past_episodes,
                     related_knowledge=related_knowledge,
                     task=current_task_description,
-                    tool_info=tool_info
+                    tool_info=tool_info,
                 )
                 prompt_msg = prompt.to_messages()
 
                 full_prompt = " ".join([msg.content for msg in prompt_msg])
 
-                self.ui.notify(title="REASONING PROMPT", message=full_prompt)
+                # await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
                 try:
                     enc = tiktoken.encoding_for_model(self.openaichat.model_name)
                     token_count = len(enc.encode(full_prompt))
                     if token_count > 4096:
-                        self.ui.notify(title="TOKEN EXCEEDS", title_color="red", message=f"Token count {token_count} exceeds 4096. Trying again with summary.")
+                        await self.ui.notify(
+                            title="TOKEN EXCEEDS",
+                            title_color="red",
+                            message=f"Token count {token_count} exceeds 4096. Trying again with summary.",
+                        )
                         # result = self._reason(should_try_complete=should_try_complete, should_summary=True)
                         should_summary = True
                         keep_it = True
                         continue
                     else:
-                        result = self.openaichat(prompt_msg).content
+                        llm_result = await self.openaichat._agenerate(
+                            messages=prompt_msg
+                        )
+                        # print("llm_result", llm_result)
+                        await self.ui.notify(
+                            title="LLM RESULT",
+                            message=llm_result.generations[0].message.content,
+                            # message=llm_result.llm_output["total_tokens"],
+                        )
+                        result = llm_result.generations[0].message.content
                     # openai.error.InvalidRequestError: This model's maximum context length is 4097 tokens. However, your messages resulted in 4879 tokens. Please reduce the length of the messages.
                 except Exception as e:
                     raise Exception(f"Error: {e}")
@@ -393,14 +498,14 @@ class Agent(BaseModel):
                 prompt = ReasonPrompt.get_template(memory=memory)
                 llm_chain = LLMChain(prompt=prompt, llm=self.llm)
                 try:
-                    result = llm_chain.predict(
+                    result = await llm_chain.apredict(
                         name=self.name,
                         role=self.role,
                         goal=self.goal,
                         related_past_episodes=related_past_episodes,
                         elated_knowledge=related_knowledge,
                         task=current_task_description,
-                        tool_info=tool_info
+                        tool_info=tool_info,
                     )
                 except Exception as e:
                     raise Exception(f"Error: {e}")
@@ -409,9 +514,7 @@ class Agent(BaseModel):
             try:
                 # self.ui.notify(title="PARSE AND VALIDATE", message=result)
                 result_json_obj = LLMJsonOutputParser.parse_and_validate(
-                    json_str=result,
-                    json_schema=REASON_JSON_SCHEMA_STR,
-                    llm=self.llm
+                    json_str=result, json_schema=REASON_JSON_SCHEMA_STR, llm=self.llm
                 )
                 return result_json_obj
             except FixJsonException:
@@ -433,14 +536,12 @@ class Agent(BaseModel):
         except Exception as e:
             raise Exception("Could not run tool: " + str(e))
 
-    def _task_complete(self, result: str) -> str:
+    async def _task_complete(self, result: str) -> str:
         current_task = self.task_manager.get_current_task_string()
-        self.ui.notify(title="COMPLETED TASK",
-                       message=f"TASK:{current_task}",
-                       title_color="BLUE")
-        self.ui.notify(title="RESULT",
-                       message=f"{result}",
-                       title_color="RED")
+        await self.ui.notify(
+            title="COMPLETED TASK", message=f"TASK:{current_task}", title_color="BLUE"
+        )
+        await self.ui.notify(title="RESULT", message=f"{result}", title_color="RED")
 
         self.task_manager.complete_current_task(result)
 
@@ -453,18 +554,22 @@ class Agent(BaseModel):
         self.episodic_memory.save_local(path=episodic_memory_dir)
         self.semantic_memory.save_local(path=semantic_memory_dir)
 
-        data = {"name": self.name,
-                "role": self.role,
-                "episodic_memory": episodic_memory_dir,
-                "semantic_memory": semantic_memory_dir
-                }
+        data = {
+            "name": self.name,
+            "role": self.role,
+            "episodic_memory": episodic_memory_dir,
+            "semantic_memory": semantic_memory_dir,
+        }
         with open(filename, "w") as f:
             json.dump(data, f)
 
     def load_agent(self) -> None:
         absolute_path = self._get_absolute_path()
         if "agent_data.json" not in os.listdir(absolute_path):
-            self.ui.notify("ERROR", "Agent data does not exist.", title_color="red")
+            # await self.ui.notify(
+            #     "ERROR", "Agent data does not exist.", title_color="red"
+            # )
+            print("ERROR", "Agent data does not exist.")
 
         with open(os.path.join(absolute_path, "agent_data.json")) as f:
             agent_data = json.load(f)
@@ -474,19 +579,27 @@ class Agent(BaseModel):
             try:
                 self.semantic_memory.load_local(agent_data["semantic_memory"])
             except Exception as e:
-                self.ui.notify(
-                    "ERROR", "Semantic memory data is corrupted.", title_color="red")
+                # await self.ui.notify(
+                #     "ERROR", "Semantic memory data is corrupted.", title_color="red"
+                # )
+                print("ERROR", "Semantic memory data is corrupted.")
                 raise e
             else:
-                self.ui.notify(
-                    "INFO", "Semantic memory data is loaded.", title_color="GREEN")
+                # await self.ui.notify(
+                #     "INFO", "Semantic memory data is loaded.", title_color="GREEN"
+                # )
+                print("INFO", "Semantic memory data is loaded.")
 
             try:
                 self.episodic_memory.load_local(agent_data["episodic_memory"])
             except Exception as e:
-                self.ui.notify(
-                    "ERROR", "Episodic memory data is corrupted.", title_color="RED")
+                # await self.ui.notify(
+                #     "ERROR", "Episodic memory data is corrupted.", title_color="RED"
+                # )
+                print("ERROR", "Episodic memory data is corrupted.")
                 raise e
             else:
-                self.ui.notify(
-                    "INFO", "Episodic memory data is loaded.", title_color="GREEN")
+                # await self.ui.notify(
+                #     "INFO", "Episodic memory data is loaded.", title_color="GREEN"
+                # )
+                print("INFO", "Episodic memory data is loaded.")

@@ -1,23 +1,23 @@
+import asyncio
 import itertools
 import sys
-import threading
-import time
 from enum import Enum
-from typing import ContextManager, Union
+from typing import AsyncContextManager, Union
 from ui.base import BaseHumanUserInterface
 
 
 class Color(Enum):
     """Color codes for the commandline"""
-    BLACK = '\033[30m'  # (Text) Black
-    RED = '\033[31m'  # (Text) Red
-    GREEN = '\033[32m'  # (Text) Green
-    YELLOW = '\033[33m'  # (Text) Yellow
-    BLUE = '\033[34m'  # (Text) Blue
-    MAGENTA = '\033[35m'  # (Text) Magenta
-    CYAN = '\033[36m'  # (Text) Cyan
-    WHITE = '\033[37m'  # (Text) White
-    COLOR_DEFAULT = '\033[39m'  # Reset text color to default
+
+    BLACK = "\033[30m"  # (Text) Black
+    RED = "\033[31m"  # (Text) Red
+    GREEN = "\033[32m"  # (Text) Green
+    YELLOW = "\033[33m"  # (Text) Yellow
+    BLUE = "\033[34m"  # (Text) Blue
+    MAGENTA = "\033[35m"  # (Text) Magenta
+    CYAN = "\033[36m"  # (Text) Cyan
+    WHITE = "\033[37m"  # (Text) White
+    COLOR_DEFAULT = "\033[39m"  # Reset text color to default
 
 
 class CommandlineUserInterface(BaseHumanUserInterface):
@@ -39,12 +39,22 @@ class CommandlineUserInterface(BaseHumanUserInterface):
             elif response in no_patterns:
                 return False
             else:
-                self.notify("Invalid input", "Please enter y or n.",
-                            title_color=Color.RED)
+                # self.notify(
+                #     "Invalid input", "Please enter y or n.", title_color=Color.RED
+                # )
+                print("Invalid input", "Please enter y or n.")
                 continue
 
-    def notify(self, title: str, message: str, title_color: Union[str, Color] = Color.YELLOW) -> None:
+    async def notify(
+        self,
+        title: str,
+        message: str,
+        title_color: Union[str, Color] = Color.YELLOW,
+        stream: bool = False,
+    ) -> None:
         """Print a notification to the user"""
+        if stream:
+            await self.stream(title, message)
         if isinstance(title_color, str):
             try:
                 title_color = Color[title_color.upper()]
@@ -52,43 +62,60 @@ class CommandlineUserInterface(BaseHumanUserInterface):
                 raise ValueError(f"{title_color} is not a valid Color")
         self._print_message(title, message, title_color)
 
-    def loading(self,
-                message: str = "Thinking...",
-                delay: float = 0.1) -> ContextManager:
+    async def stream(self, title: str, message: str):
+        """Print a notification to the user"""
+        await self._call_callback(f"{title}:{message}")
+
+    async def _call_callback(self, message: str):
+        if self.callback is not None:
+            await self.callback.on_llm_new_token(f"{message}\n")
+            await asyncio.sleep(0.05)
+
+    async def loading(
+        self,
+        message: str = "Thinking...",
+        delay: float = 0.1,
+    ) -> AsyncContextManager:
         """Return a context manager that will display a loading spinner"""
+
+        await self._call_callback(message)
+
         return self.Spinner(message=message, delay=delay)
 
     def _print_message(self, title: str, message: str, title_color: Color) -> None:
         print(f"{title_color.value}{title}{Color.COLOR_DEFAULT.value}: {message}")
 
-    class Spinner:
+    class Spinner(AsyncContextManager):
         """A simple spinner class"""
 
         def __init__(self, message="Loading...", delay=0.1):
             """Initialize the spinner class"""
-            self.spinner = itertools.cycle(['-', '/', '|', '\\'])
+            self.spinner = itertools.cycle(["-", "/", "|", "\\"])
             self.delay = delay
             self.message = message
             self.running = False
-            self.spinner_thread = None
+            self.task = None
 
-        def spin(self):
+        async def spin(self):
             """Spin the spinner"""
             while self.running:
                 sys.stdout.write(next(self.spinner) + " " + self.message + "\r")
                 sys.stdout.flush()
-                time.sleep(self.delay)
-                sys.stdout.write('\b' * (len(self.message) + 2))
+                await asyncio.sleep(self.delay)
+                sys.stdout.write("\b" * (len(self.message) + 2))
 
-        def __enter__(self):
+        async def __aenter__(self):
             """Start the spinner"""
+            print("aenter")
             self.running = True
-            self.spinner_thread = threading.Thread(target=self.spin)
-            self.spinner_thread.start()
+            self.task = asyncio.create_task(self.spin())
+            await self.task
+            return self
 
-        def __exit__(self, exc_type, exc_value, exc_traceback):
+        async def __aexit__(self, exc_type, exc_value, exc_traceback):
             """Stop the spinner"""
+            print("aexit")
             self.running = False
-            self.spinner_thread.join()
-            sys.stdout.write('\r' + ' ' * (len(self.message) + 2) + '\r')
+            self.task.cancel()
+            sys.stdout.write("\r" + " " * (len(self.message) + 2) + "\r")
             sys.stdout.flush()

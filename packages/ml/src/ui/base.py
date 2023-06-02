@@ -1,12 +1,18 @@
 from pydantic import BaseModel, Extra
 from abc import abstractmethod
-from typing import ContextManager
+from typing import ContextManager, Union
+
+from langchain.callbacks import AsyncIteratorCallbackHandler
 
 
 class BaseHumanUserInterface(BaseModel):
-    """ Base class for human user interface."""
+    """Base class for human user interface."""
+
+    callback: Union[AsyncIteratorCallbackHandler, None] = None
+
     class Config:
         extra = Extra.forbid
+        arbitrary_types_allowed = True
 
     @abstractmethod
     def get_user_input(self) -> str:
@@ -19,11 +25,11 @@ class BaseHumanUserInterface(BaseModel):
         pass
 
     @abstractmethod
-    def notify(self, title: str, message: str) -> None:
+    async def notify(self, title: str, message: str):
         # notify user
         pass
 
     @abstractmethod
-    def loading(self) -> ContextManager:
+    async def loading(self) -> ContextManager:
         # waiting for AI to respond
         pass

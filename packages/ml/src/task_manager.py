@@ -17,6 +17,7 @@ from llm.list_output_parser import LLMListOutputParser
 
 class Task(BaseModel):
     """Task model."""
+
     id: int = Field(..., description="Task ID")
     description: str = Field(..., description="Task description")
     is_done: bool = Field(False, description="Task done or not")
@@ -27,21 +28,21 @@ class Task(BaseModel):
 
 class TaskManager(BaseModel):
     """Task manager model."""
+
     subquestions: List[str] = Field([], description="The list of subquestions")
     tasks: List[Task] = Field([], description="The list of tasks")
     current_task_id: int = Field(1, description="The last task id")
     llm: BaseLLM = Field(..., description="llm class for the agent")
 
-    def generate_subquestions(self, name: str, role: str, goal: str, tool_info: str):
+    async def generate_subquestions(
+        self, name: str, role: str, goal: str, tool_info: str
+    ):
         """Generate a task plan for the agent."""
         prompt = get_subquestions_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(
-                name=name,
-                role=role,
-                goal=goal,
-                tool_info=tool_info
+            result = await llm_chain.apredict(
+                name=name, role=role, goal=goal, tool_info=tool_info
             )
 
         except Exception as e:
@@ -57,16 +58,13 @@ class TaskManager(BaseModel):
         for subquestion in result_list:
             self.subquestions.append(f"- {subquestion}")
 
-    def generate_task_plan(self, name: str, role: str, goal: str):
+    async def generate_task_plan(self, name: str, role: str, goal: str):
         """Generate a task plan for the agent."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(
-                name=name,
-                role=role,
-                goal=goal,
-                subquestions_list=self.subquestions
+            result = await llm_chain.apredict(
+                name=name, role=role, goal=goal, subquestions_list=self.subquestions
             )
 
         except Exception as e:
@@ -126,11 +124,15 @@ class TaskManager(BaseModel):
 
     def get_completed_tasks_as_string(self) -> str:
         """Get the list of completed tasks as string."""
-        return "\n".join([self._task_to_string(task) for task in self.tasks if task.is_done])
+        return "\n".join(
+            [self._task_to_string(task) for task in self.tasks if task.is_done]
+        )
 
     def get_results_completed_tasks_as_string(self) -> str:
         """Get the list results of completed tasks as string."""
-        return "\n".join([f"{task.id}: {task.result}" for task in self.tasks if task.is_done])
+        return "\n".join(
+            [f"{task.id}: {task.result}" for task in self.tasks if task.is_done]
+        )
 
     def get_incomplete_tasks(self) -> List[Task]:
         """Get the list of incomplete tasks."""
@@ -145,9 +147,12 @@ class TaskManager(BaseModel):
 
     def is_action_already_used_in_current_task(self, tool_name, args):
         current_task = self.get_current_task()
-        if current_task and current_task.last_tool_name == tool_name and current_task.last_tool_args == args:
+        if (
+            current_task
+            and current_task.last_tool_name == tool_name
+            and current_task.last_tool_args == args
+        ):
             return True
         current_task.last_tool_name = tool_name
         current_task.last_tool_args = args
         return False
-    

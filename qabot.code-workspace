@@ -20,7 +20,11 @@
 	"settings": {
 		"solidity.remappings": [
 			"@openzeppelin/=packages/hardhat/node_modules/@openzeppelin/"
-		]
+		],
+		"[python]": {
+			"editor.defaultFormatter": "ms-python.black-formatter"
+		},
+		"python.formatting.provider": "none"
 	},
 	"extensions": {
 		"recommendations": [

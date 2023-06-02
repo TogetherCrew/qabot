@@ -18,16 +18,20 @@ class SemanticMemory(BaseModel):
     num_episodes: int = Field(0, description="The number of episodes")
     llm: BaseLLM = Field(..., description="llm class for the agent")
     openaichat: Optional[ChatOpenAI] = Field(
-        None, description="ChatOpenAI class for the agent")
+        None, description="ChatOpenAI class for the agent"
+    )
     embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
+        HuggingFaceEmbeddings(client=SentenceTransformer(device="cpu")),
+        title="Embeddings to use for tool retrieval",
+    )
     vector_store: VectorStore = Field(
-        None, title="Vector store to use for tool retrieval")
+        None, title="Vector store to use for tool retrieval"
+    )
 
     class Config:
         arbitrary_types_allowed = True
 
-    def extract_entity(self, text: str) -> dict:
+    async def extract_entity(self, text: str) -> dict:
         """Extract an entity from a text using the LLM"""
         if self.openaichat:
             # print(f"semantic->extract_entity->Text1: {text}")
@@ -39,7 +43,7 @@ class SemanticMemory(BaseModel):
             # Get the result from the LLM
             llm_chain = LLMChain(prompt=get_template(), llm=self.llm)
             try:
-                result = llm_chain.predict(text=text)
+                result = await llm_chain.apredict(text=text)
             except Exception as e:
                 raise Exception(f"Error: {e}")
 
@@ -47,9 +51,7 @@ class SemanticMemory(BaseModel):
         try:
             # print(f"semantic->extract_entity->Result: {result}")
             result_json_obj = LLMJsonOutputParser.parse_and_validate(
-                json_str=result,
-                json_schema=CREATE_JSON_SCHEMA_STR,
-                llm=self.llm
+                json_str=result, json_schema=CREATE_JSON_SCHEMA_STR, llm=self.llm
             )
         except LLMJsonOutputParserException as e:
             raise LLMJsonOutputParserException(str(e))
@@ -61,7 +63,8 @@ class SemanticMemory(BaseModel):
                 print(f"semantic->extract_entity->Text: {text}\n")
                 print(f"semantic->extract_entity->Result: {result}\n")
                 print(
-                    f"semantic->extract_entity->Extracted entity: {result_json_obj}\n")
+                    f"semantic->extract_entity->Extracted entity: {result_json_obj}\n"
+                )
                 raise Exception(f"Error: {e}")
             return result_json_obj
 
@@ -70,7 +73,9 @@ class SemanticMemory(BaseModel):
         if self.vector_store is None:
             return {}
         relevant_documents = self.vector_store.similarity_search(query, k=k)
-        return {d.metadata["entity"]: d.metadata["description"] for d in relevant_documents}
+        return {
+            d.metadata["entity"]: d.metadata["description"] for d in relevant_documents
+        }
 
     def _embed_knowledge(self, entity: dict[str:Any]) -> None:
         """Embed the knowledge into the vector store."""
@@ -85,13 +90,10 @@ class SemanticMemory(BaseModel):
             self.vector_store = FAISS.from_texts(
                 texts=description_list,
                 metadatas=metadata_list,
-                embedding=self.embeddings
+                embedding=self.embeddings,
             )
         else:
-            self.vector_store.add_texts(
-                texts=description_list,
-                metadatas=metadata_list
-            )
+            self.vector_store.add_texts(texts=description_list, metadatas=metadata_list)
 
     def save_local(self, path: str) -> None:
         """Save the vector store to a local folder."""
@@ -100,4 +102,5 @@ class SemanticMemory(BaseModel):
     def load_local(self, path: str) -> None:
         """Load the vector store from a local folder."""
         self.vector_store = FAISS.load_local(
-            folder_path=path, embeddings=self.embeddings)
+            folder_path=path, embeddings=self.embeddings
+        )
