@@ -37,7 +37,7 @@ assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 
-llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY) # type: ignore
+llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY)  # type: ignore
 openaichat = ChatOpenAI(temperature=0.0,
                         openai_api_key=OPENAI_API_KEY)  # type: ignore # Optional
 
@@ -59,7 +59,7 @@ search_tool = AgentTool(
 
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-mpnet-base-v2")
-    # model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
+# model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
 
 convo_tool = DiscordTool(
     name="conversations_raw",
@@ -101,5 +101,5 @@ agent = Agent(
 ## 3. Momoize usage of tools to agent ###
 agent.prodedural_memory.memorize_tools([convo_tool_summary, convo_tool])
 
-## 4.Run agent ###
-agent.run()
+# ## 4.Run agent ###
+# agent.run()

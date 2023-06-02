@@ -54,7 +54,7 @@ class Agent(BaseModel):
         None, description="The long term memory of the agent")
     task_manager: TaskManager = Field(
         None, description="The task manager for the agent")
-    
+
     sm: SerializationManager = Field(SerializationManager(base_path=BASE_PATH_SERIALIZATION), description="The serialization manager for the agent")
 
     def __init__(self, **data: Any) -> None:
@@ -79,7 +79,7 @@ class Agent(BaseModel):
                 self.ui.notify("INFO", "Agent data will be overwritten.")
         self.ui.notify(
             "START", f"Hello, I am {self.name}. {self.role}. My goal is {self.goal}.")
-        
+
         # Fix: add missing arguments to the following method calls
         # self.task_manager.initialize_tasks(subquestions=[], tasks=[], current_task_id=0)
         # self.episodic_memory.initialize(num_episodes=0, store=None, embeddings=None, vector_store=None)
@@ -103,7 +103,12 @@ class Agent(BaseModel):
         absolute_path = self._get_absolute_path()
         return "agent_data.json" in os.listdir(absolute_path)
 
-    def run(self):
+    def run(self, goal: str = None, callback: Any = None) -> None:
+        if goal is not None:
+            self.goal = goal
+        if self.goal is None:
+            self.ui.notify("ERROR", "Goal is not set.")
+            return
         # verify if subquestion its empty
         if len(self.task_manager.subquestions) == 0:
             with self.ui.loading("Generate Subquestions..."):
@@ -119,8 +124,8 @@ class Agent(BaseModel):
                     role=self.role,
                     goal=self.goal,
                     tool_info=tool_info,
-            )
-    
+                )
+
         self.ui.notify(title="SUBQUESTIONS",
                        message=self.task_manager.subquestions,
                        title_color="RED")
@@ -146,7 +151,7 @@ class Agent(BaseModel):
                 self.ui.notify(title="FINISH",
                                message=f"All tasks are completed. {self.name} will end the operation.",
                                title_color="RED")
-                
+
                 with self.ui.loading("Final answer..."):
                     self._final_answer()
                     break
@@ -179,17 +184,17 @@ class Agent(BaseModel):
 
                     # check if the tool_name and args already was used in the past in that task.
                     # if so, skip the action.
-                    if self.task_manager.is_action_already_used_in_current_task(tool_name, args): # TODO FIX: should be a list of args instead of the last one
+                    if self.task_manager.is_action_already_used_in_current_task(tool_name, args):  # TODO FIX: should be a list of args instead of the last one
                         self.ui.notify(title="SKIP ACTION", title_color="RED", message=f"{tool_name} {args} is already used in the current task. Try complete the task!")
                         should_try_complete = True
                         keep_it = True
                     else:
                         self.ui.notify(title="BREAK", title_color="RED", message="Continue")
-                    
+
                     if tool_name == "task_complete":
                         self.ui.notify(title="BREAK", title_color="RED", message="Task is completed.")
                         break
-            
+
             # Task Complete
             if tool_name == "task_complete":
                 action_result = args["result"]  # todo: check if result is correct
@@ -197,7 +202,7 @@ class Agent(BaseModel):
                 self._task_complete(action_result)
 
                 # run final prompt here
-                
+
                 with self.ui.loading("Try final answer..."):
                     result = self._final_answer()
                     # trim result
@@ -252,7 +257,7 @@ class Agent(BaseModel):
                 thoughts=thoughts,
                 action=action,
                 result=action_result
-            ) # type: ignore
+            )  # type: ignore
 
             summary = self.episodic_memory.summarize_and_memorize_episode(episode)
             self.ui.notify(title="MEMORIZE NEW EPISODE",
@@ -269,32 +274,32 @@ class Agent(BaseModel):
         all_related_knowledge = dict()
         for task in completed_tasks:
             related_knowledge = self.semantic_memory.remember_related_knowledge(
-                            task.description,
-                            k=5
-                        )
+                task.description,
+                k=5
+            )
             all_related_knowledge.update(related_knowledge)
 
         all_related_past_episodes = ""
         for task in completed_tasks:
             related_past_episodes = self.episodic_memory.remember_related_episodes(
-                            task.description,
-                            k=2
-                        )
+                task.description,
+                k=2
+            )
             summary_of_related_past_episodes = ("\n").join(
-                            [past.summary for past in related_past_episodes])
+                [past.summary for past in related_past_episodes])
             all_related_past_episodes += f"\n{summary_of_related_past_episodes}"
 
         input_variables = {"name": self.name,
-                                       "role": self.role,
-                                       "goal": self.goal,
-                                       "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
-                                       "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
-                                       "related_knowledge": all_related_knowledge,
-                                       "related_past_episodes": all_related_past_episodes,
-                                       "next_possible_tasks": self.task_manager.get_incomplete_tasks_string()}
+                           "role": self.role,
+                           "goal": self.goal,
+                           "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
+                           "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
+                           "related_knowledge": all_related_knowledge,
+                           "related_past_episodes": all_related_past_episodes,
+                           "next_possible_tasks": self.task_manager.get_incomplete_tasks_string()}
 
         final_prompt_formatted = final_prompt.format_prompt(
-                        **input_variables)
+            **input_variables)
         self.ui.notify(title="FINAL PROMPT", message=final_prompt_formatted.to_string())
 
         llm_chain = LLMChain(prompt=final_prompt, llm=self.llm)
@@ -304,8 +309,8 @@ class Agent(BaseModel):
             raise Exception(f"Error: {e}")
 
         if result:
-            self.ui.notify(title="FINAL ANSWER", message=result, title_color="RED") # type: ignore
-        return result            
+            self.ui.notify(title="FINAL ANSWER", message=result, title_color="RED")  # type: ignore
+        return result
 
     def _reason(self, should_try_complete=False, should_summary=False) -> Union[str, Dict[Any, Any]]:
         keep_it = True
@@ -319,16 +324,16 @@ class Agent(BaseModel):
                 related_past_episodes = self.episodic_memory.remember_related_episodes(
                     current_task_description,
                     k=2)
-                
+
                 # Get the recent episodes
                 memory = self.episodic_memory.remember_recent_episodes(2)
-                
+
                 # remove from memory the episodes equals in the related_past_episodes
                 memory = [m for m in memory if m not in related_past_episodes]
 
                 if len(related_past_episodes) > 0:
                     self.ui.notify(title="TASK RELATED EPISODE", message=related_past_episodes)
-                    
+
                     if should_summary:
                         summary_of_related_past_episodes = Episode.get_summary_of_episodes(related_past_episodes)
                         self.ui.notify(title="SUMMARY OF TASK RELATED EPISODES", message=summary_of_related_past_episodes)
@@ -352,10 +357,9 @@ class Agent(BaseModel):
                 # Set up the prompt
                 tool_info = self.prodedural_memory.tools_to_prompt(tools)
 
-
             # If OpenAI Chat is available, it is used for higher accuracy results.
             if self.openaichat:
-                prompt = ReasonPrompt.get_chat_template(memory=memory,should_summary=should_summary).format_prompt(
+                prompt = ReasonPrompt.get_chat_template(memory=memory, should_summary=should_summary).format_prompt(
                     name=self.name,
                     role=self.role,
                     goal=self.goal,
@@ -410,10 +414,10 @@ class Agent(BaseModel):
                     llm=self.llm
                 )
                 return result_json_obj
-            except FixJsonException:        
+            except FixJsonException:
                 should_summary = True
                 keep_it = True
-                continue                
+                continue
             except Exception as e:
                 raise Exception(f"Error: {e}")
 
