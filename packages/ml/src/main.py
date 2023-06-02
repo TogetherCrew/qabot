@@ -1,6 +1,7 @@
 # first import
 import os
 import asyncio
+from utils.util import timeit
 
 # os.environ["LANGCHAIN_HANDLER"] = "langchain"
 
@@ -18,6 +19,8 @@ from langchain.embeddings import HuggingFaceEmbeddings
 
 # Set API Keys
 load_dotenv()
+OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo")
+assert OPENAI_API_MODEL, "OPENAI_API_MODEL environment variable is missing from .env"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 assert OPENAI_API_KEY, "OPENAI_API_KEY environment variable is missing from .env"
 GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
@@ -38,10 +41,11 @@ assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 
 
+@timeit
 def load():
     llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY)  # type: ignore
     openaichat = ChatOpenAI(
-        temperature=0.0, openai_api_key=OPENAI_API_KEY
+        temperature=0.0, openai_api_key=OPENAI_API_KEY, model=OPENAI_API_MODEL
     )  # type: ignore # Optional
 
     ### 1.Create Agent ###

@@ -4,7 +4,7 @@ SUBQUESTIONS_TEMPLATE = """
 You are {name}, an {role}.
 
 To achieve this goal effectively, you should consider generating subquestions that will help break down the main question into smaller, more manageable parts.
-These subquestions might involve understanding the context using the [TOOLS] available, the individuals involved, and the specific details related to goal question.
+These subquestions might involve understanding the context and the specific details related to goal question.
 
 [TOOLS]
 {tool_info}

@@ -9,6 +9,7 @@ from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
 from serializer_manager import SerializationManager
+from utils.util import atimeit
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
 from task_manager import TaskManager
@@ -121,11 +122,18 @@ class Agent(BaseModel):
         absolute_path = self._get_absolute_path()
         return "agent_data.json" in os.listdir(absolute_path)
 
+    @atimeit
     async def run(
         self,
         goal: Union[str, None] = None,
         callback: Union[AsyncIteratorCallbackHandler, None] = None,
     ):
+        """
+        This method runs the agent.
+        """
+
+        # self.start_time = time.time()
+
         if goal is not None:
             self.goal = goal
         if self.goal is None:
@@ -227,9 +235,9 @@ class Agent(BaseModel):
                     await self.ui.notify(
                         title="CRITICISM", message=thoughts["criticism"]  # type: ignore
                     )
-                    await self.ui.notify(
-                        title="PAST_TOOL_USED", message=thoughts["past_tool_used"]
-                    )
+                    # await self.ui.notify(
+                    #     title="PAST_TOOL_USED", message=thoughts["past_tool_used"]
+                    # )
                     await self.ui.notify(stream=True, title="THOUGHT", message=thoughts["summary"])  # type: ignore
                     await self.ui.notify(title="NEXT ACTION", message=action)
                 except Exception as e:
@@ -263,6 +271,14 @@ class Agent(BaseModel):
                         title_color="RED",
                         message="Task is completed.",
                     )
+                    break
+                if tool_name == "discard_task":
+                    await self.ui.notify(
+                        title="BREAK",
+                        title_color="RED",
+                        message="Discard Task.",
+                    )
+                    self.task_manager.discard_current_task()
                     break
 
             # Task Complete
@@ -394,6 +410,14 @@ class Agent(BaseModel):
         except Exception as e:
             raise Exception(f"Error: {e}")
 
+        # # measure the time since start of function and print it
+        # end = time.time()
+        # # format it in hours, minutes, seconds
+        # total_time = time.strftime("%H:%M:%S", time.gmtime(end - self.start_time))
+        # await self.ui.notify(
+        #     title="FINAL ANSWER TIME",
+        #     message=f"Time to get final answer: {total_time}",
+        # )
         if result:
             await self.ui.notify(stream=True, title="FINAL ANSWER", message=result, title_color="RED")  # type: ignore
         return result
@@ -468,7 +492,7 @@ class Agent(BaseModel):
 
                 full_prompt = " ".join([msg.content for msg in prompt_msg])
 
-                # await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
+                await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
                 try:
                     enc = tiktoken.encoding_for_model(self.openaichat.model_name)
                     token_count = len(enc.encode(full_prompt))

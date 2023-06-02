@@ -26,15 +26,37 @@ poetry install
 
 5. Open the `.env` file and fill in the following variables:
    - `OPENAI_API_KEY` : Your OpenAI API key.
-   - `GOOGLE_API_KEY` : Your Google API key.
-   - `GOOGLE_CSE_ID` : Your Google Custom Search Engine ID..
 
 ## 💻 Usage
 
 1. Run `QABot` Python module in your terminal
 
+```bash
+python ./src/main.py
 ```
+
+```bash
 poetry run python src/main.py
+```
+
+1. To run in API mode
+
+```bash
+python ./src/api.py
+```
+
+After in webapp folder
+
+```bash
+pnpm install
+pnpm dev
+```
+
+or
+
+```bash
+yarn install
+yarn dev
 ```
 
 ## 🚀 Planned Features

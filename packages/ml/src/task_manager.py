@@ -56,6 +56,10 @@ class TaskManager(BaseModel):
         for subquestion in result_list:
             self.subquestions.append(f"- {subquestion}")
 
+    def discard_current_task(self):
+        """Discard the current task."""
+        self.tasks = [task for task in self.tasks if task.id != self.current_task_id]
+
     async def generate_task_plan(self, name: str, role: str, goal: str, tool_info: str):
         """Generate a task plan for the agent."""
         prompt = get_template()
