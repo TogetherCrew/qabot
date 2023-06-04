@@ -1,16 +1,4 @@
-
-from typing import List
 from langchain.prompts import PromptTemplate
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
-)
-from langchain.schema import (
-    AIMessage,
-    HumanMessage,
-    SystemMessage
-)
 
 # Convert the schema object to a string
 BASE_TEMPLATE = """
@@ -65,15 +53,27 @@ This reminds you of related past events summarized:
 def get_template() -> PromptTemplate:
     template = BASE_TEMPLATE
     prompt_template = PromptTemplate(
-        input_variables=["thoughts", "action", "result"], template=template)
+        input_variables=["thoughts", "action", "result"], template=template
+    )
     return prompt_template
 
 
 def get_final_answer_template() -> PromptTemplate:
-    """ Use "name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "next_possible_tasks" """
+    """Use "name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "next_possible_tasks" """
     template = FINAL_ANSWER_TEMPLATE
     prompt_template = PromptTemplate(
-        input_variables=["name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "    "], template=template)
+        input_variables=[
+            "name",
+            "role",
+            "goal",
+            "completed_tasks",
+            "results_of_completed_tasks",
+            "related_knowledge",
+            "related_past_episodes",
+            "next_possible_tasks",
+        ],
+        template=template,
+    )
     return prompt_template
 
 

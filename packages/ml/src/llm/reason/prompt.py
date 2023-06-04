@@ -2,21 +2,15 @@
 import json
 import time
 from langchain.prompts import PromptTemplate
-from pydantic import Field
 from typing import List
 from memory.episodic_memory import Episode
 from llm.reason.schema import JsonSchema
 from langchain.prompts import PromptTemplate
 from langchain.prompts.chat import (
     ChatPromptTemplate,
-    HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
-from langchain.schema import (
-    AIMessage,
-    HumanMessage,
-    SystemMessage
-)
+from langchain.schema import SystemMessage
 
 
 # Convert the schema object to a string
@@ -25,7 +19,7 @@ JSON_SCHEMA_STR = json.dumps(JsonSchema.schema)
 BASE_TEMPLATE = """
 You are {name}, {role}
 Your decisions must always be made independently without seeking user assistance or asking for anyone to help. 
-Pursue simple strategies to complete your tasks, use ONLY your TOOLS available, get at least 1 recent episode, and use your knowledge to complete your task.
+Pursue simple strategies to complete your tasks, use ONLY your [TOOLS] available, get at least 1 recent episode, and use your knowledge to complete your task.
 
 [GOAL]
 {goal}
@@ -57,6 +51,7 @@ tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
 [TOOLS]
 task_complete: "If you think you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
+discard_task: "If you think you can't find the answer, please use this tool to discard and go next task"
 {tool_info}
 """
 
@@ -107,7 +102,11 @@ Please ensure your output strictly follows JSON RESPONSE FORMAT.
 {JSON_SCHEMA_STR}
 
 Determine which next command to use, check if in [RECENT EPISODES] or [RELATED PAST EPISODES] messages if you already did same action and args for the same task and avoid doing it again to avoid infinite loop, and respond using the format specified above:
-""".replace("{", "{{").replace("}", "}}")
+""".replace(
+    "{", "{{"
+).replace(
+    "}", "}}"
+)
 
 
 def get_template(memory: List[Episode] = None) -> PromptTemplate:
@@ -131,12 +130,24 @@ def get_template(memory: List[Episode] = None) -> PromptTemplate:
     template += SCHEMA_TEMPLATE
 
     PROMPT = PromptTemplate(
-        input_variables=["name", "role", "goal", "related_knowledge", "related_past_episodes", "task", "tool_info"], template=template)
+        input_variables=[
+            "name",
+            "role",
+            "goal",
+            "related_knowledge",
+            "related_past_episodes",
+            "task",
+            "tool_info",
+        ],
+        template=template,
+    )
 
     return PROMPT
 
 
-def get_chat_template(memory: List[Episode] = None, should_summary=False) -> ChatPromptTemplate:
+def get_chat_template(
+    memory: List[Episode] = None, should_summary=False
+) -> ChatPromptTemplate:
     messages = []
     messages.append(SystemMessagePromptTemplate.from_template(BASE_TEMPLATE))
 
@@ -154,7 +165,9 @@ def get_chat_template(memory: List[Episode] = None, should_summary=False) -> Cha
                 thoughts_str = json.dumps(episode.thoughts)
                 action_str = json.dumps(episode.action)
                 result = episode.result
-                recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
+                recent_episodes += (
+                    thoughts_str + "\n" + action_str + "\n" + result + "\n"
+                )
 
         messages.append(SystemMessage(content=recent_episodes))
     messages.append(SystemMessage(content=SCHEMA_TEMPLATE))

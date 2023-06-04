@@ -119,6 +119,56 @@ export const getChatCompletionStream = async (
   return stream;
 };
 
+export const getAPIStream = async (
+  endpoint: string,
+  question: MessageInterface,
+  // config: ConfigInterface,
+  // apiKey?: string,
+  customHeaders?: Record<string, string>
+) => {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...customHeaders,
+  };
+  // if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      question: question.content,
+    }),
+  });
+  if (response.status === 404 || response.status === 405) {
+    const text = await response.text();
+    if (text.includes('model_not_found')) {
+      throw new Error(
+        text +
+          '\nMessage from Better ChatGPT:\nPlease ensure that you have access to the GPT-4 API!'
+      );
+    } else {
+      throw new Error(
+        'Message from Better ChatGPT:\nInvalid API endpoint! We recommend you to check your free API endpoint.'
+      );
+    }
+  }
+
+  if (response.status === 429 || !response.ok) {
+    const text = await response.text();
+    let error = text;
+    if (text.includes('insufficient_quota')) {
+      error +=
+        '\nMessage from Better ChatGPT:\nWe recommend changing your API endpoint or API key';
+    } else if (response.status === 429) {
+      error += '\nRate limited!';
+    }
+    throw new Error(error);
+  }
+
+  const stream = response.body;
+  return stream;
+};
+
 export const submitShareGPT = async (body: ShareGPTSubmitBodyInterface) => {
   const request = await fetch('https://sharegpt.com/api/conversations', {
     body: JSON.stringify(body),

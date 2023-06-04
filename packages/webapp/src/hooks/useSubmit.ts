@@ -2,7 +2,7 @@ import React from 'react';
 import useStore from '@store/store';
 import { useTranslation } from 'react-i18next';
 import { ChatInterface, MessageInterface } from '@type/chat';
-import { getChatCompletion, getChatCompletionStream } from '@api/api';
+import { getAPIStream, getChatCompletion } from '@api/api';
 import { parseEventSource } from '@api/helper';
 import { limitMessageTokens, updateTotalTokenUsed } from '@utils/messageUtils';
 import { _defaultChatConfig } from '@constants/chat';
@@ -73,28 +73,14 @@ const useSubmit = () => {
       );
       if (messages.length === 0) throw new Error('Message exceed max token!');
 
-      // no api key (free)
-      if (!apiKey || apiKey.length === 0) {
-        // official endpoint
-        if (apiEndpoint === officialAPIEndpoint) {
-          throw new Error(t('noApiKeyWarning') as string);
-        }
+      // get last messsage from the list
+      const lastMessage = messages.findLast(
+        (message) => message.role == 'user' && message.content !== ''
+      );
 
-        // other endpoints
-        stream = await getChatCompletionStream(
-          useStore.getState().apiEndpoint,
-          messages,
-          chats[currentChatIndex].config
-        );
-      } else if (apiKey) {
-        // own apikey
-        stream = await getChatCompletionStream(
-          useStore.getState().apiEndpoint,
-          messages,
-          chats[currentChatIndex].config,
-          apiKey
-        );
-      }
+      if (!lastMessage) throw new Error('No messages submitted!');
+
+      stream = await getAPIStream('http://localhost:3333/ask', lastMessage);
 
       if (stream) {
         if (stream.locked)
@@ -103,32 +89,29 @@ const useSubmit = () => {
           );
         const reader = stream.getReader();
         let reading = true;
-        let partial = '';
+        // let partial = '';
         while (reading && useStore.getState().generating) {
           const { done, value } = await reader.read();
-          const result = parseEventSource(
-            partial + new TextDecoder().decode(value)
-          );
-          partial = '';
+          console.log('done', done);
+          const result = new TextDecoder().decode(value);
+          // console.log('value', );
+          // const result = parseEventSource(new TextDecoder().decode(value));
+          console.log('result', result);
+          // partial = '';
 
           if (result === '[DONE]' || done) {
             reading = false;
           } else {
-            const resultString = result.reduce((output: string, curr) => {
-              if (typeof curr === 'string') {
-                partial += curr;
-              } else {
-                const content = curr.choices[0].delta.content;
-                if (content) output += content;
-              }
-              return output;
-            }, '');
-
+            // const resultString = result.reduce((output: string, curr) => {
+            //   if (curr) output += curr;
+            //   return output;
+            // }, '');
+            // console.log('resultString', resultString);
             const updatedChats: ChatInterface[] = JSON.parse(
               JSON.stringify(useStore.getState().chats)
             );
             const updatedMessages = updatedChats[currentChatIndex].messages;
-            updatedMessages[updatedMessages.length - 1].content += resultString;
+            updatedMessages[updatedMessages.length - 1].content += result;
             setChats(updatedChats);
           }
         }

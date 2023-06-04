@@ -11,6 +11,31 @@ import { Theme } from '@type/theme';
 import ApiPopup from '@components/ApiPopup';
 import Toast from '@components/Toast';
 
+import '@rainbow-me/rainbowkit/styles.css';
+import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { configureChains, createConfig, WagmiConfig } from 'wagmi';
+import { polygonMumbai, polygon } from 'wagmi/chains';
+import { alchemyProvider } from 'wagmi/providers/alchemy';
+import { publicProvider } from 'wagmi/providers/public';
+
+console.log(import.meta.env);
+const { chains, publicClient } = configureChains(
+  [polygonMumbai],
+  [
+    alchemyProvider({ apiKey: import.meta.env.VITE_ALCHEMY_ID! }),
+    publicProvider(),
+  ]
+);
+const { connectors } = getDefaultWallets({
+  appName: 'QABot',
+  chains,
+});
+const wagmiConfig = createConfig({
+  autoConnect: true,
+  connectors,
+  publicClient,
+});
+
 function App() {
   const initialiseNewChat = useInitialiseNewChat();
   const setChats = useStore((state) => state.setChats);
@@ -75,12 +100,16 @@ function App() {
   }, []);
 
   return (
-    <div className='overflow-hidden w-full h-full relative'>
-      <Menu />
-      <Chat />
-      <ApiPopup />
-      <Toast />
-    </div>
+    <WagmiConfig config={wagmiConfig}>
+      <RainbowKitProvider modalSize='compact' chains={chains}>
+        <div className='overflow-hidden w-full h-full relative'>
+          <Menu />
+          <Chat />
+          <ApiPopup />
+          <Toast />
+        </div>
+      </RainbowKitProvider>
+    </WagmiConfig>
   );
 }
 

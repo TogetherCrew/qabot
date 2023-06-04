@@ -1,69 +1,91 @@
-import queue
-import threading
-from fastapi import FastAPI
+import asyncio
+from functools import lru_cache
+from typing import Any, AsyncGenerator
+from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 
-from langchain.callbacks.base import BaseCallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.callbacks import AsyncIteratorCallbackHandler
+from pydantic import BaseModel
 
-from main import agent
+from fastapi.middleware.cors import CORSMiddleware
 
-import uvicorn
+from main import load
 
 app = FastAPI()
 
-cb = BaseCallbackManager()
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=".*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-class ThreadedGenerator:
-    def __init__(self):
-        self.queue = queue.Queue()
+async def generate_response(question: str) -> AsyncGenerator[Any, None]:
+    run: asyncio.Task = None
+    try:
+        callback_handler = AsyncIteratorCallbackHandler()
 
-    def __iter__(self):
-        return self
+        run = asyncio.create_task(get_agent().run(question, callback_handler))
+        print("Running")
+        async for token in callback_handler.aiter():
+            # print("Yielding:", token)
+            # yield {"done": "", "value": token}
+            yield token + "\n\n"
 
-    def __next__(self):
-        item = self.queue.get()
-        if item is StopIteration:
-            raise item
-        return item
-
-    def send(self, data):
-        self.queue.put(data)
-
-    def close(self):
-        self.queue.put(StopIteration)
-
-
-class ChainStreamHandler(StreamingStdOutCallbackHandler):
-    def __init__(self, gen):
-        super().__init__()
-        self.gen = gen
-
-    def on_llm_new_token(self, token: str, **kwargs):
-        self.gen.send(token)
+        print("Done")
+        await run
+        print("Done2")
+    except Exception as e:
+        print("Caught Exception:", e)
+    except BaseException as e:  # asyncio.CancelledError
+        print("Caught BaseException:", e)
+    finally:
+        if run:
+            run.cancel()
 
 
-def ask_question(g: ThreadedGenerator, question: str):
-    agent.run(f"Find the answer for the question if possible: '{question}'", callback=BaseCallbackManager([ChainStreamHandler(g)]))
+async def streamer(gen):
+    try:
+        async for i in gen:
+            yield i
+            await asyncio.sleep(0.25)
+    except asyncio.CancelledError:
+        print("caught cancelled error")
 
 
-def chat(prompt):
-    g = ThreadedGenerator()
-    g.send("#[Thinking]")
-    threading.Thread(target=ask_question, args=(g, prompt)).start()
-    return g
+class Ask(BaseModel):
+    question: str
 
 
-@app.get("/ask/{question}")
-async def ask(question: str):
-    return StreamingResponse(ask_question(question))
+@app.post("/ask/")
+async def ask(request: Request, body: Ask):
+    print("Received question:", body.question)
+
+    return StreamingResponse(streamer(generate_response(body.question)))
 
 
 @app.on_event("startup")
 async def startup():
     print("Server Startup!")
+    get_agent()
 
 
-def start():
-    uvicorn.run("main:app", host="0.0.0.0", port=3333, reload=True)
+@lru_cache()
+def get_agent():
+    return load()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    print("Server Shutdown!")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("api:app", host="0.0.0.0", port=3333, reload=True)
