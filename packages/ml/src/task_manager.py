@@ -1,8 +1,6 @@
-import json
-from pydantic import BaseModel, Field
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
-from typing import List, Any
+from typing import List
 from langchain import LLMChain
 from llm.generate_task_plan.prompt import get_subquestions_template, get_template
 from llm.list_output_parser import LLMListOutputParser
@@ -17,6 +15,7 @@ from llm.list_output_parser import LLMListOutputParser
 
 class Task(BaseModel):
     """Task model."""
+
     id: int = Field(..., description="Task ID")
     description: str = Field(..., description="Task description")
     is_done: bool = Field(False, description="Task done or not")
@@ -27,21 +26,21 @@ class Task(BaseModel):
 
 class TaskManager(BaseModel):
     """Task manager model."""
+
     subquestions: List[str] = Field([], description="The list of subquestions")
     tasks: List[Task] = Field([], description="The list of tasks")
     current_task_id: int = Field(1, description="The last task id")
     llm: BaseLLM = Field(..., description="llm class for the agent")
 
-    def generate_subquestions(self, name: str, role: str, goal: str, tool_info: str):
+    async def generate_subquestions(
+        self, name: str, role: str, goal: str, tool_info: str
+    ):
         """Generate a task plan for the agent."""
         prompt = get_subquestions_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(
-                name=name,
-                role=role,
-                goal=goal,
-                tool_info=tool_info
+            result = await llm_chain.apredict(
+                name=name, role=role, goal=goal, tool_info=tool_info
             )
 
         except Exception as e:
@@ -49,7 +48,7 @@ class TaskManager(BaseModel):
 
         # Parse and validate the result
         try:
-            result_list = LLMListOutputParser.parse(result, separeted_string="\t")
+            result_list = LLMListOutputParser.parse(result, separeted_string=",")
         except Exception as e:
             raise Exception("Error: " + str(e))
 
@@ -57,16 +56,21 @@ class TaskManager(BaseModel):
         for subquestion in result_list:
             self.subquestions.append(f"- {subquestion}")
 
-    def generate_task_plan(self, name: str, role: str, goal: str):
+    def discard_current_task(self):
+        """Discard the current task."""
+        self.tasks = [task for task in self.tasks if task.id != self.current_task_id]
+
+    async def generate_task_plan(self, name: str, role: str, goal: str, tool_info: str):
         """Generate a task plan for the agent."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(
+            result = await llm_chain.apredict(
                 name=name,
                 role=role,
                 goal=goal,
-                subquestions_list=self.subquestions
+                subquestions_list=self.subquestions,
+                tool_info=tool_info,
             )
 
         except Exception as e:
@@ -126,11 +130,15 @@ class TaskManager(BaseModel):
 
     def get_completed_tasks_as_string(self) -> str:
         """Get the list of completed tasks as string."""
-        return "\n".join([self._task_to_string(task) for task in self.tasks if task.is_done])
+        return "\n".join(
+            [self._task_to_string(task) for task in self.tasks if task.is_done]
+        )
 
     def get_results_completed_tasks_as_string(self) -> str:
         """Get the list results of completed tasks as string."""
-        return "\n".join([f"{task.id}: {task.result}" for task in self.tasks if task.is_done])
+        return "\n".join(
+            [f"{task.id}: {task.result}" for task in self.tasks if task.is_done]
+        )
 
     def get_incomplete_tasks(self) -> List[Task]:
         """Get the list of incomplete tasks."""
@@ -145,9 +153,12 @@ class TaskManager(BaseModel):
 
     def is_action_already_used_in_current_task(self, tool_name, args):
         current_task = self.get_current_task()
-        if current_task and current_task.last_tool_name == tool_name and current_task.last_tool_args == args:
+        if (
+            current_task
+            and current_task.last_tool_name == tool_name
+            and current_task.last_tool_args == args
+        ):
             return True
         current_task.last_tool_name = tool_name
         current_task.last_tool_args = args
         return False
-    

@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
 from langchain import LLMChain
@@ -16,8 +16,12 @@ class Episode(BaseModel):
 
     # create like equals method to compare two episodes
     def __eq__(self, other):
-        return self.thoughts == other.thoughts and self.action == other.action and self.result == other.result
-    
+        return (
+            self.thoughts == other.thoughts
+            and self.action == other.action
+            and self.result == other.result
+        )
+
     @staticmethod
     def get_summary_of_episodes(episodes: List["Episode"]) -> str:
         return "\n".join([episode.summary for episode in episodes])
@@ -28,9 +32,12 @@ class EpisodicMemory(BaseModel):
     store: Dict[str, Episode] = Field({}, description="The list of episodes")
     llm: BaseLLM = Field(..., description="llm class for the agent")
     embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
+        HuggingFaceEmbeddings(client=SentenceTransformer(device="cpu")),
+        title="Embeddings to use for tool retrieval",
+    )
     vector_store: VectorStore = Field(
-        None, title="Vector store to use for tool retrieval")
+        None, title="Vector store to use for tool retrieval"
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -41,22 +48,24 @@ class EpisodicMemory(BaseModel):
         self.store[str(self.num_episodes)] = episode
         self._embed_episode(episode)
 
-    def summarize_and_memorize_episode(self, episode: Episode) -> str:
+    async def summarize_and_memorize_episode(self, episode: Episode) -> str:
         """Summarize and memorize an episode."""
-        summary = self._summarize(episode.thoughts, episode.action, episode.result)
+        summary = await self._summarize(
+            episode.thoughts, episode.action, episode.result
+        )
         episode.summary = summary
         self.memorize_episode(episode)
         return summary
 
-    def _summarize(self, thoughts: Dict[str, Any], action: Dict[str, Any], result: str) -> str:
+    async def _summarize(
+        self, thoughts: Dict[str, Any], action: Dict[str, Any], result: str
+    ) -> str:
         """Summarize an episode."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
-            result = llm_chain.predict(
-                thoughts=thoughts,
-                action=action,
-                result=result
+            result = await llm_chain.apredict(
+                thoughts=thoughts, action=action, result=result
             )
         except Exception as e:
             raise Exception(f"Error: {e}")
@@ -90,7 +99,7 @@ class EpisodicMemory(BaseModel):
                 thoughts=d.metadata["thoughts"],
                 action=d.metadata["action"],
                 result=d.metadata["result"],
-                summary=d.metadata["summary"]
+                summary=d.metadata["summary"],
             )
             result.append(episode)
         return result
@@ -98,14 +107,19 @@ class EpisodicMemory(BaseModel):
     def _embed_episode(self, episode: Episode) -> None:
         """Embed an episode and add it to the vector store."""
         texts = [episode.summary]
-        metadatas = [{"index": self.num_episodes,
-                      "thoughts": episode.thoughts,
-                      "action": episode.action,
-                      "result": episode.result,
-                      "summary": episode.summary}]
+        metadatas = [
+            {
+                "index": self.num_episodes,
+                "thoughts": episode.thoughts,
+                "action": episode.action,
+                "result": episode.result,
+                "summary": episode.summary,
+            }
+        ]
         if self.vector_store is None:
             self.vector_store = FAISS.from_texts(
-                texts=texts, embedding=self.embeddings, metadatas=metadatas)
+                texts=texts, embedding=self.embeddings, metadatas=metadatas
+            )
         else:
             self.vector_store.add_texts(texts=texts, metadatas=metadatas)
 
@@ -117,4 +131,5 @@ class EpisodicMemory(BaseModel):
     def load_local(self, path: str) -> None:
         """Load the vector store locally."""
         self.vector_store = FAISS.load_local(
-            folder_path=path, embeddings=self.embeddings)
+            folder_path=path, embeddings=self.embeddings
+        )

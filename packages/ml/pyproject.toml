@@ -12,7 +12,6 @@ google-api-python-client = "^2.84.0"
 faiss-cpu = "^1.7.3"
 sentence-transformers = "^2.2.2"
 jsonschema = "^4.17.3"
-marvin = "^0.7.5"
 base58 = "^2.1.1"
 deeplake = "^3.5.2"
 tiktoken = "^0.4.0"
@@ -20,7 +19,8 @@ fastapi = "^0.95.2"
 langchain = "^0.0.188"
 lanarky = "^0.7.6"
 gradio = "^3.33.0"
-uvicorn = "^0.22.0"
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
+marvin = "^0.9.2"
 
 [tool.poetry.dev-dependencies]
 
