@@ -72,8 +72,8 @@ def load():
         name="conversations_raw",
         convo_type=ConvoType.RAW,
         embeddings=embeddings,
-        args={"query": "<Best query possible to get the desire result>"},
-        description="With this tool, you can find out history messages happen in diverse channels and threads in Discord. It is a great way to find information. That use similarity embedding search",
+        args={"query": "<Best query possible to get the desired result>"},
+        description="With this tool, you can find all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
         user_permission_required=False,
     )
 
@@ -81,8 +81,8 @@ def load():
         name="conversations_summary",
         convo_type=ConvoType.SUMMARY,
         embeddings=embeddings,
-        args={"query": "<Best query possible to get the desire result>"},
-        description="With this tool, you can find out summary of messages happen in diverse channels and threads in Discord. It is a great way to find information.",
+        args={"query": "<Best query possible to get the desired result>"},
+        description="With this tool, you can find daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",
         user_permission_required=False,
     )
 

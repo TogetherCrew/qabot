@@ -1,62 +1,65 @@
 from langchain.prompts import PromptTemplate
 
 SUBQUESTIONS_TEMPLATE = """
-You are {name}, an {role}.
+You are {name}, {role}.
 
-To achieve this goal effectively, you should consider generating subquestions that will help break down the main question into smaller, more manageable parts.
-These subquestions might involve understanding the context and the specific details related to goal question.
+You are answering the question [QUESTION] and you have the tools [TOOLS] to your availability to find the answer. 
+To answer this question effectively, you should consider generating subquestions that will help break down the main question into smaller, more manageable parts.
+These subquestions might involve understanding the context and the specific details related to the main question. 
+Only create subquestions for complex main questions. Otherwise don't generate any subquestions.
+
+[QUESTION]
+{goal}
 
 [TOOLS]
 {tool_info}
 
-[GOAL]
-{goal}
-
-Based on this goal, generate subquestions that will help you create a more detailed understanding of the situation and guide your future actions. 
-
-Now, based on the goal, generate your own subquestions. Remember, these should help you break down the main question into smaller, more manageable parts.
-
-[SUBQUESTIONS]
+Based on this [QUESTION], generate subquestions that will help you create a more detailed understanding of the situation and guide your future actions.
+ 
+[RESPONSE FORMAT]
 Return your subquestions as a list of strings.
-- Max 2 best subsquestions
+- Max 3 best subquestions
 - Enclose each subquestion in double quotation marks.
 - Separate subquestions with commas.
 - Use [] only at the beginning and end.
-
+- Return an empty list if no subquestions were generated
+ 
 ["Subquestion 1","Subquestion 2", ...]
 
-[RESPONSE]"
+Now, based on the main question [QUESTION], generate your own subquestions using [RESPONSE FORMAT]. 
+Remember, only generate subquestions if necessary.
+Subquestions should help you break down the main question into smaller, more manageable parts.
+
+[RESPONSE] 
 """
 
 # Convert the schema object to a string
 
 BASE_TEMPLATE = """
 You are {name}, {role}
-You should create new tasks that can help archieve the [GOAL]
 
-[GOAL]
+You should create one or several new tasks that can help answer the main question [QUESTION]. 
+
+[QUESTION]
 {goal}
 
-[TOOLS]
-{tool_info}
-
-[SUBQUESTIONS]
-Those subquestions derived from the goal can help you create efficient tasks:
-{subquestions_list}
-
 [YOUR MISSION]
-Based on the [GOAL] and [TOOLS], create new tasks to be completed by the AI system that do not overlap with incomplete tasks.
-- Tasks should be calculated backward from the GOAL, and effective arrangements should be made.
-- Take in considerations the available [TOOLS] and [SUBQUESTIONS] to create tasks that can be completed by the AI system.
+Based on the [QUESTION], create tasks following these rules: 
+- Tasks should be defined to lead to a final answer to [QUESTION] and can be the same as [QUESTION].
+- Tasks should be ordered so that tasks that depend on the output of other tasks are only listed later. 
+- Tasks should specify what information needs to be collected, not how it needs to be done.
 
 [RESPONSE FORMAT]
-Return the tasks as a list of string.
-- Max 3 best tasks
+Return the tasks as a list of strings.
+- Max 3 best tasks but ideally only 1 task. 
+- Define tasks in a way that requires solving as little tasks as possible in order to find a final answer to [QUESTION].
 - Enclose each task in double quotation marks.
 - Separate tasks with Tabs.
-- Use [] only at the beginning and end
+- Use [] only at the beginning and end.
 
 ["Task 1 that the AI assistant should perform"\t"Task 2 that the AI assistant should perform",\t ...]
+
+Now, based on the main question [QUESTION], generate the tasks that should be completed to answer the main question.
 
 [RESPONSE]
 """
@@ -65,7 +68,7 @@ Return the tasks as a list of string.
 def get_template() -> PromptTemplate:
     template = BASE_TEMPLATE
     PROMPT = PromptTemplate(
-        input_variables=["name", "role", "goal", "subquestions_list", "tool_info"],
+        input_variables=["name", "role", "goal"],
         template=template,
     )
     return PROMPT

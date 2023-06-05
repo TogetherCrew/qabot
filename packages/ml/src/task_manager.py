@@ -69,8 +69,8 @@ class TaskManager(BaseModel):
                 name=name,
                 role=role,
                 goal=goal,
-                subquestions_list=self.subquestions,
-                tool_info=tool_info,
+                #subquestions_list=self.subquestions,
+                # tool_info=tool_info,
             )
 
         except Exception as e:

@@ -19,9 +19,11 @@ Using above [THOUGHTS], [ACTION], and [RESULT OF ACTION], please summarize the e
 
 FINAL_ANSWER_TEMPLATE = """
 You are {name}, {role}
-You are working on {goal} and have completed all tasks but need find the final answer for the [GOAL].
 
-[GOAL]
+You are working on finding an answer to the question in [QUESTION].
+You have completed all tasks to get to the answer. Now you need to find a final answer based on the results from the completed tasks in [COMPLETED TASKS].
+
+[QUESTION]
 {goal}
 
 [COMPLETED TASKS]
@@ -42,9 +44,9 @@ This reminds you of related past events summarized:
 {related_past_episodes}
 
 [INSTRUCTION]
- - Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [GOAL].
- - If you think performing [NEXT POSSIBLE TASKS] will lead to a better answer, answer "continue"
- - If it's not possible to find the answer, answer just "I don't know"
+ - Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [QUESTION].
+ - If you are not able to fully answer the question and you think that performing [NEXT POSSIBLE TASKS] will lead to a better answer, answer "continue"
+ - If it's not possible to find the answer, answer "I don't know"
 
 [FINAL ANSWER]
 """
