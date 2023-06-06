@@ -122,6 +122,7 @@ export const getChatCompletionStream = async (
 export const getAPIStream = async (
   endpoint: string,
   question: MessageInterface,
+  accessToken: string,
   // config: ConfigInterface,
   // apiKey?: string,
   customHeaders?: Record<string, string>
@@ -129,6 +130,7 @@ export const getAPIStream = async (
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...customHeaders,
+    'Authorization': `Bearer ${accessToken}`,
   };
   // if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 

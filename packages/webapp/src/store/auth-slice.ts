@@ -1,6 +1,21 @@
 import { defaultAPIEndpoint } from '@constants/auth';
 import { StoreSlice } from './store';
 
+export enum AccessTokenStatus {
+  NOT_LOGGED_IN,
+  LOGGED_IN,
+  EXPIRED,
+}
+
+export interface AuthWalletSlice {
+  accessToken?: string | undefined;
+  address?: string | undefined;
+  status: AccessTokenStatus;
+  setAccessToken: (accessToken: string) => void;
+  setAddress: (address: string) => void;
+  setStatus: (status: AccessTokenStatus) => void;
+}
+
 export interface AuthSlice {
   apiKey?: string;
   apiEndpoint: string;
@@ -30,6 +45,33 @@ export const createAuthSlice: StoreSlice<AuthSlice> = (set, get) => ({
     set((prev: AuthSlice) => ({
       ...prev,
       firstVisit: firstVisit,
+    }));
+  },
+});
+
+export const createAuthWalletSlice: StoreSlice<AuthWalletSlice> = (
+  set,
+  get
+) => ({
+  accessToken: undefined,
+  address: undefined,
+  status: AccessTokenStatus.NOT_LOGGED_IN,
+  setAccessToken: (accessToken: string) => {
+    set((prev: AuthWalletSlice) => ({
+      ...prev,
+      accessToken: accessToken,
+    }));
+  },
+  setAddress: (address: string) => {
+    set((prev: AuthWalletSlice) => ({
+      ...prev,
+      address: address,
+    }));
+  },
+  setStatus: (status: AccessTokenStatus) => {
+    set((prev: AuthWalletSlice) => ({
+      ...prev,
+      status: status,
     }));
   },
 });

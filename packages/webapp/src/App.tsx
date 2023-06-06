@@ -18,7 +18,6 @@ import { polygonMumbai, polygon } from 'wagmi/chains';
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { publicProvider } from 'wagmi/providers/public';
 
-console.log(import.meta.env);
 const { chains, publicClient } = configureChains(
   [polygonMumbai],
   [

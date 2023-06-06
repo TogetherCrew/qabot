@@ -2,7 +2,12 @@ import { StoreApi, create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ChatSlice, createChatSlice } from './chat-slice';
 import { InputSlice, createInputSlice } from './input-slice';
-import { AuthSlice, createAuthSlice } from './auth-slice';
+import {
+  AuthSlice,
+  AuthWalletSlice,
+  createAuthSlice,
+  createAuthWalletSlice,
+} from './auth-slice';
 import { ConfigSlice, createConfigSlice } from './config-slice';
 import { PromptSlice, createPromptSlice } from './prompt-slice';
 import { ToastSlice, createToastSlice } from './toast-slice';
@@ -30,6 +35,7 @@ import {
 export type StoreState = ChatSlice &
   InputSlice &
   AuthSlice &
+  AuthWalletSlice &
   ConfigSlice &
   PromptSlice &
   ToastSlice;
@@ -67,6 +73,7 @@ const useStore = create<StoreState>()(
       ...createChatSlice(set, get),
       ...createInputSlice(set, get),
       ...createAuthSlice(set, get),
+      ...createAuthWalletSlice(set, get),
       ...createConfigSlice(set, get),
       ...createPromptSlice(set, get),
       ...createToastSlice(set, get),
