@@ -2,7 +2,7 @@ import asyncio
 import os
 import json
 import tiktoken
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from llm.summarize.prompt import get_final_answer_template
 from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
@@ -47,7 +47,7 @@ class Agent(BaseModel):
     )
     name: str = Field(..., description="The name of the agent")
     role: str = Field(..., description="The role of the agent")
-    goal: str = Field(..., description="The goal of the agent")
+    question: str = Field(..., description="The question of the agent")
     ui: CommandlineUserInterface = Field(
         CommandlineUserInterface(), description="The user interface for the agent"
     )
@@ -95,13 +95,13 @@ class Agent(BaseModel):
                 print("INFO", "Agent data will be overwritten.")
                 # await self.ui.notify("INFO", "Agent data will be overwritten.")
         # self.ui.notify(
-        #     "START", f"Hello, I am {self.name}. {self.role}. My goal is {self.goal}.")
+        #     "START", f"Hello, I am {self.name}. {self.role}. My question is {self.question}.")
 
         # Fix: add missing arguments to the following method calls
         # self.task_manager.initialize_tasks(subquestions=[], tasks=[], current_task_id=0)
         # self.episodic_memory.initialize(num_episodes=0, store=None, embeddings=None, vector_store=None)
         # self.semantic_memory.initialize(num_episodes=0, embeddings=None, vector_store=None)
-        tm = self.sm.load_and_deserialize(f"task_manager::{self.goal}")
+        tm = self.sm.load_and_deserialize(f"task_manager::{self.question}")
         if tm is not None:
             # self.ui.notify("INFO", "Task Manager loaded.")
             print("INFO", "Task Manager loaded.")
@@ -125,8 +125,8 @@ class Agent(BaseModel):
     @atimeit
     async def run(
         self,
-        goal: Union[str, None] = None,
-        callback: Union[AsyncIteratorCallbackHandler, None] = None,
+        question: str | None = None,
+        callback: AsyncIteratorCallbackHandler | None = None,
     ):
         """
         This method runs the agent.
@@ -134,10 +134,10 @@ class Agent(BaseModel):
 
         # self.start_time = time.time()
 
-        if goal is not None:
-            self.goal = goal
-        if self.goal is None:
-            await self.ui.notify("ERROR", "Goal is not set.")
+        if question is not None:
+            self.question = question
+        if self.question is None:
+            await self.ui.notify("ERROR", "Question is not set.")
             return
         if callback is not None:
             self.ui.callback = callback
@@ -149,37 +149,35 @@ class Agent(BaseModel):
             self.prodedural_memory.remember_all_tools()
         )
         # verify if subquestion its empty
-        if len(self.task_manager.subquestions) == 0:
-            await self.ui.notify(
-                stream=True, title="", message="Generate Subquestions..."
-            )
-            # Get the relevant tools
-            # If agent has to much tools, use "remember_relevant_tools"
-            # because too many tool information will cause context windows overflow.
-            # Set up the prompt
-            # print("Started")
+        # if len(self.task_manager.subquestions) == 0:
+        # await self.ui.notify(
+        #     stream=True, title="", message="Generate Subquestions..."
+        # )
+        # Get the relevant tools
+        # If agent has to much tools, use "remember_relevant_tools"
+        # because too many tool information will cause context windows overflow.
+        # Set up the prompt
+        # print("Started")
 
-            # print("Preparing to call generate_subquestions")
-            await self.task_manager.generate_subquestions(
-                name=self.name,
-                role=self.role,
-                goal=self.goal,
-                tool_info=tool_info,
-            )
-            # print("Finished calling generate_subquestions")
+        # await self.task_manager.generate_subquestions(
+        #     name=self.name,
+        #     role=self.role,
+        #     question=self.question,
+        #     tool_info=tool_info,
+        # )
 
-        await self.ui.notify(
-            title="SUBQUESTIONS",
-            message=self.task_manager.subquestions.__str__(),
-            title_color="RED",
-        )
+        # await self.ui.notify(
+        #     title="SUBQUESTIONS",
+        #     message=self.task_manager.subquestions.__str__(),
+        #     title_color="RED",
+        # )
         if len(self.task_manager.tasks) == 0:
             await self.ui.notify(stream=True, title="", message="Generate Task Plan...")
 
             await self.task_manager.generate_task_plan(
                 name=self.name,
                 role=self.role,
-                goal=self.goal,
+                question=self.question,
                 tool_info=tool_info,
             )
         await self.ui.notify(
@@ -189,7 +187,7 @@ class Agent(BaseModel):
         )
 
         await self.sm.serialize_and_save(
-            self.task_manager, f"task_manager::{self.goal}"
+            self.task_manager, f"task_manager::{self.question}"
         )
         while True:
             current_task = self.task_manager.get_current_task_string()
@@ -215,7 +213,7 @@ class Agent(BaseModel):
             tool_name = None
             while keep_it:
                 keep_it = False
-                reasoning_result: Union[Dict[str, Any], str] = None
+                reasoning_result: Dict[str, Any] | str | None = None
                 try:
                     reasoning_result = await self._reason(
                         should_try_complete=should_try_complete
@@ -360,7 +358,11 @@ class Agent(BaseModel):
                 title="MEMORIZE NEW EPISODE", message=summary, title_color="blue"
             )
 
-            entities = await self.semantic_memory.extract_entity(action_result)
+            entities = await self.semantic_memory.extract_entity(
+                action_result,
+                question=self.question,
+                task=self.task_manager.get_current_task_string(),
+            )
             await self.ui.notify(
                 title="MEMORIZE NEW KNOWLEDGE",
                 message=entities.__str__(),
@@ -391,7 +393,7 @@ class Agent(BaseModel):
         input_variables = {
             "name": self.name,
             "role": self.role,
-            "goal": self.goal,
+            "question": self.question,
             "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
             "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
             "related_knowledge": all_related_knowledge,
@@ -482,7 +484,7 @@ class Agent(BaseModel):
                 ).format_prompt(
                     name=self.name,
                     role=self.role,
-                    goal=self.goal,
+                    question=self.question,
                     related_past_episodes=related_past_episodes,
                     related_knowledge=related_knowledge,
                     task=current_task_description,
@@ -523,20 +525,20 @@ class Agent(BaseModel):
 
             else:
                 # Get the result from the LLM
-                prompt = ReasonPrompt.get_template(memory=memory)
-                llm_chain = LLMChain(prompt=prompt, llm=self.llm)
-                try:
-                    result = await llm_chain.apredict(
-                        name=self.name,
-                        role=self.role,
-                        goal=self.goal,
-                        related_past_episodes=related_past_episodes,
-                        elated_knowledge=related_knowledge,
-                        task=current_task_description,
-                        tool_info=tool_info,
-                    )
-                except Exception as e:
-                    raise Exception(f"Error: {e}")
+                # prompt = ReasonPrompt.get_template(memory=memory)
+                # llm_chain = LLMChain(prompt=prompt, llm=self.llm)
+                # try:
+                #     result = await llm_chain.apredict(
+                #         name=self.name,
+                #         role=self.role,
+                #         question=self.question,
+                #         related_past_episodes=related_past_episodes,
+                #         elated_knowledge=related_knowledge,
+                #         task=current_task_description,
+                #         tool_info=tool_info,
+                #     )
+                # except Exception as e:
+                raise Exception("Should never happen")
 
             # Parse and validate the result
             try:

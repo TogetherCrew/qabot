@@ -34,8 +34,6 @@ AGENT_ROLE = os.getenv("AGENT_ROLE", "")
 assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
 AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
 assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
-# AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
-# assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
@@ -72,8 +70,8 @@ def load():
         name="conversations_raw",
         convo_type=ConvoType.RAW,
         embeddings=embeddings,
-        args={"query": "<Best query possible to get the desire result>"},
-        description="With this tool, you can find out history messages happen in diverse channels and threads in Discord. It is a great way to find information. That use similarity embedding search",
+        args={"query": "<Best query possible to get the desired result>"},
+        description="With this tool, you can find all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
         user_permission_required=False,
     )
 
@@ -81,8 +79,8 @@ def load():
         name="conversations_summary",
         convo_type=ConvoType.SUMMARY,
         embeddings=embeddings,
-        args={"query": "<Best query possible to get the desire result>"},
-        description="With this tool, you can find out summary of messages happen in diverse channels and threads in Discord. It is a great way to find information.",
+        args={"query": "<Best query possible to get the desired result>"},
+        description="With this tool, you can find daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",
         user_permission_required=False,
     )
 
@@ -98,7 +96,7 @@ def load():
     agent = Agent(
         name=AGENT_NAME,
         role=AGENT_ROLE,
-        goal=AGENT_OBJECTIVE,
+        question=AGENT_OBJECTIVE,
         ui=CommandlineUserInterface(),
         llm=llm,
         openaichat=openaichat,
