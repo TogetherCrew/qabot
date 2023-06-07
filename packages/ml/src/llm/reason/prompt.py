@@ -53,7 +53,6 @@ tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
 [TOOLS]
 task_complete: "If you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
-discard_task: "If you can't find the answer, please use this tool to discard and move to the next task"
 {tool_info}
 """
 
@@ -100,7 +99,7 @@ def get_chat_template(
         # recent_episodes += f"The current time and date is {time.strftime('%c')}:\n"
 
         if should_summary:
-            recent_episodes = Episode.get_summary_of_episodes(memory)
+            recent_episodes += Episode.get_summary_of_episodes(memory)
         else:
             # insert past conversation logs
             for episode in memory:
