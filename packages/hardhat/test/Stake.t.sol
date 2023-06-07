@@ -23,9 +23,13 @@ contract QAStakeTest is Test {
         // vm.stopPrank();
     }
 
-    function testStake() public {
+    function testStakeAndUnstake() public {
         uint256 AMOUNT_TO_STAKE = 500;
         token.approve(address(stake), AMOUNT_TO_STAKE);
         stake.stake(AMOUNT_TO_STAKE);
+        assertEq(stake.balances(address(this)), AMOUNT_TO_STAKE);
+        // token.approve(address(stake), AMOUNT_TO_STAKE);
+        stake.unstake(AMOUNT_TO_STAKE);
+        assertEq(stake.balances(address(this)), 0);
     }
 }
