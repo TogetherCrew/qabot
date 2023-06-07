@@ -4,11 +4,10 @@ import json
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
-from langchain import LLMChain
 from langchain.vectorstores import VectorStore, FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chat_models import ChatOpenAI
-from llm.extract_entity.prompt import get_template, get_chat_template
+from llm.extract_entity.prompt import get_chat_template
 from llm.extract_entity.schema import JsonSchema as ENTITY_EXTRACTION_SCHEMA
 from llm.json_output_parser import LLMJsonOutputParser, LLMJsonOutputParserException
 from utils.util import atimeit, time_start
@@ -34,13 +33,17 @@ class SemanticMemory(BaseModel):
         arbitrary_types_allowed = True
 
     @atimeit
-    async def extract_entity(self, text: str) -> dict:
+    async def extract_entity(self, text: str, question: str, task: str) -> dict:
         """Extract an entity from a text using the LLM"""
         if self.openaichat:
             # print(f"semantic->extract_entity->Text1: {text}")
             # If OpenAI Chat is available, it is used for higher accuracy results.
             t = time_start()
-            prompt = get_chat_template().format_prompt(text=text).to_messages()
+            prompt = (
+                get_chat_template()
+                .format_prompt(text=text, question=question, task=task)
+                .to_messages()
+            )
             t.end("extract_entity->get_chat_template")
 
             t = time_start()
@@ -50,15 +53,7 @@ class SemanticMemory(BaseModel):
             result = llm_result.generations[0].message.content
             # result = self.openaichat(prompt).content
         else:
-            # print(f"semantic->extract_entity->Text2: {text}")
-            # Get the result from the LLM
-            llm_chain = LLMChain(prompt=get_template(), llm=self.llm)
-            try:
-                t = time_start()
-                result = await llm_chain.apredict(text=text)
-                t.end("extract_entity->llm_chain.apredict")
-            except Exception as e:
-                raise Exception(f"Error: {e}")
+            raise Exception("Should never happen!")
 
         # Parse and validate the result
         try:

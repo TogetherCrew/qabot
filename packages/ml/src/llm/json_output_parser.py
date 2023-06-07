@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Dict, Union, List
+from typing import Any, Dict, List
 from pydantic import BaseModel
 from jsonschema import validate, ValidationError
 from langchain.llms.base import BaseLLM
@@ -50,7 +50,7 @@ def auto_fix_json(json_str: str, schema: str) -> str:
 class LLMJsonOutputParser(BaseModel):
     """Parse the output of the LLM."""
     @classmethod
-    def parse_and_validate(cls, json_str: str, json_schema: str, llm: BaseLLM) -> Union[str, Dict[Any, Any]]:
+    def parse_and_validate(cls, json_str: str, json_schema: str, llm: BaseLLM) -> str | Dict[Any, Any]:
         """
         Parses and validates the JSON string.
         """
@@ -74,7 +74,7 @@ class LLMJsonOutputParser(BaseModel):
         return re.sub(r"\[|\]", "", json_str)
 
     @classmethod
-    def _parse_json(cls, json_str: str, json_schema: str, llm: BaseLLM) -> Union[str, Dict[Any, Any]]:
+    def _parse_json(cls, json_str: str, json_schema: str, llm: BaseLLM) -> str | Dict[Any, Any]:
         """
         Parses the JSON string.
         """
@@ -103,7 +103,7 @@ class LLMJsonOutputParser(BaseModel):
             raise ParseJsonException("Could not parse JSON:" + str(e))
 
     @classmethod
-    def _validate_json(cls, json_obj: Union[str, Dict[Any, Any]], json_schema: str, llm: BaseLLM) -> Union[str, Dict[Any, Any]]:
+    def _validate_json(cls, json_obj: str | Dict[Any, Any], json_schema: str, llm: BaseLLM) -> str | Dict[Any, Any]:
         """
         Check if the given JSON string is fully complient with the provided schema.
         """

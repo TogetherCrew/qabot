@@ -1,12 +1,11 @@
 import time
-from typing import Union
 
 
 class Timeless:
     def __init__(self):
         self.start = time.time()
 
-    def end(self, thing: Union[str, None] = None):
+    def end(self, thing: str | None = None):
         end = time.time() - self.start
         # convert to H:M:S
         m, s = divmod(end, 60)

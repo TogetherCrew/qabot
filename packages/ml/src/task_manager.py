@@ -27,40 +27,18 @@ class Task(BaseModel):
 class TaskManager(BaseModel):
     """Task manager model."""
 
-    subquestions: List[str] = Field([], description="The list of subquestions")
+    # subquestions: List[str] = Field([], description="The list of subquestions")
     tasks: List[Task] = Field([], description="The list of tasks")
     current_task_id: int = Field(1, description="The last task id")
     llm: BaseLLM = Field(..., description="llm class for the agent")
-
-    async def generate_subquestions(
-        self, name: str, role: str, goal: str, tool_info: str
-    ):
-        """Generate a task plan for the agent."""
-        prompt = get_subquestions_template()
-        llm_chain = LLMChain(prompt=prompt, llm=self.llm)
-        try:
-            result = await llm_chain.apredict(
-                name=name, role=role, goal=goal, tool_info=tool_info
-            )
-
-        except Exception as e:
-            raise Exception(f"Error: {e}")
-
-        # Parse and validate the result
-        try:
-            result_list = LLMListOutputParser.parse(result, separeted_string=",")
-        except Exception as e:
-            raise Exception("Error: " + str(e))
-
-        # Add tasks with a serial number
-        for subquestion in result_list:
-            self.subquestions.append(f"- {subquestion}")
 
     def discard_current_task(self):
         """Discard the current task."""
         self.tasks = [task for task in self.tasks if task.id != self.current_task_id]
 
-    async def generate_task_plan(self, name: str, role: str, goal: str, tool_info: str):
+    async def generate_task_plan(
+        self, name: str, role: str, question: str, tool_info: str
+    ):
         """Generate a task plan for the agent."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
@@ -68,9 +46,9 @@ class TaskManager(BaseModel):
             result = await llm_chain.apredict(
                 name=name,
                 role=role,
-                goal=goal,
-                subquestions_list=self.subquestions,
-                tool_info=tool_info,
+                question=question,
+                # subquestions_list=self.subquestions,
+                # tool_info=tool_info,
             )
 
         except Exception as e:

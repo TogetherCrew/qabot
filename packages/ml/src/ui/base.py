@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Extra
 from abc import abstractmethod
-from typing import ContextManager, Union
+from typing import ContextManager
 
 from langchain.callbacks import AsyncIteratorCallbackHandler
 
@@ -8,7 +8,7 @@ from langchain.callbacks import AsyncIteratorCallbackHandler
 class BaseHumanUserInterface(BaseModel):
     """Base class for human user interface."""
 
-    callback: Union[AsyncIteratorCallbackHandler, None] = None
+    callback: AsyncIteratorCallbackHandler | None = None
 
     class Config:
         extra = Extra.forbid
