@@ -49,7 +49,8 @@ const useSubmit = () => {
 
   const handleSubmit = async () => {
     const chats = useStore.getState().chats;
-    if (generating || !chats) return;
+    const accessToken = useStore.getState().accessToken;
+    if (generating || !chats || !accessToken) return;
 
     const updatedChats: ChatInterface[] = JSON.parse(JSON.stringify(chats));
 
@@ -80,7 +81,11 @@ const useSubmit = () => {
 
       if (!lastMessage) throw new Error('No messages submitted!');
 
-      stream = await getAPIStream('http://localhost:3333/ask', lastMessage);
+      stream = await getAPIStream(
+        `${import.meta.env.VITE_API_URL}/ask`,
+        lastMessage,
+        accessToken
+      );
 
       if (stream) {
         if (stream.locked)

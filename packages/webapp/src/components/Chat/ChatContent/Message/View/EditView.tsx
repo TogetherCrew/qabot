@@ -177,6 +177,7 @@ const EditViewButtons = memo(
   }) => {
     const { t } = useTranslation();
     const generating = useStore.getState().generating;
+    const accessToken = useStore.getState().accessToken;
     const advancedMode = useStore((state) => state.advancedMode);
 
     return (
@@ -185,7 +186,9 @@ const EditViewButtons = memo(
           {sticky && (
             <button
               className={`btn relative mr-2 btn-primary ${
-                generating ? 'cursor-not-allowed opacity-40' : ''
+                !accessToken || generating
+                  ? 'cursor-not-allowed opacity-40'
+                  : ''
               }`}
               onClick={handleSaveAndSubmit}
             >
@@ -212,9 +215,11 @@ const EditViewButtons = memo(
 
           {sticky || (
             <button
-              className='btn relative mr-2 btn-neutral'
+              className={`btn relative mr-2 btn-neutral ${
+                !accessToken ? 'cursor-not-allowed opacity-40' : ''
+              }`}
               onClick={() => {
-                !generating && setIsModalOpen(true);
+                accessToken && !generating && setIsModalOpen(true);
               }}
             >
               <div className='flex items-center justify-center gap-2'>

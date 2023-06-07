@@ -13,6 +13,10 @@ from main import load
 
 app = FastAPI()
 
+from login import router as loginRouter
+
+app.include_router(loginRouter)
+
 origins = ["*"]
 
 app.add_middleware(
