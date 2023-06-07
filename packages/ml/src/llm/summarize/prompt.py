@@ -24,7 +24,7 @@ You are working on finding an answer to the question in [QUESTION].
 You have completed all tasks to get to the answer. Now you need to find a final answer based on the results from the completed tasks in [COMPLETED TASKS].
 
 [QUESTION]
-{goal}
+{question}
 
 [COMPLETED TASKS]
 {completed_tasks}
@@ -61,13 +61,13 @@ def get_template() -> PromptTemplate:
 
 
 def get_final_answer_template() -> PromptTemplate:
-    """Use "name", "role", "goal", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "next_possible_tasks" """
+    """Use "name", "role", "question", "completed_tasks", "results_of_completed_tasks", "related_knowledge", "related_past_episodes", "next_possible_tasks" """
     template = FINAL_ANSWER_TEMPLATE
     prompt_template = PromptTemplate(
         input_variables=[
             "name",
             "role",
-            "goal",
+            "question",
             "completed_tasks",
             "results_of_completed_tasks",
             "related_knowledge",
@@ -77,9 +77,3 @@ def get_final_answer_template() -> PromptTemplate:
         template=template,
     )
     return prompt_template
-
-
-# def get_chat_templatez() -> ChatPromptTemplate:
-#     messages = []
-#     messages.append(SystemMessagePromptTemplate.from_template(BASE_TEMPLATE))
-#     return ChatPromptTemplate.from_messages(messages)

@@ -9,7 +9,7 @@ These subquestions might involve understanding the context and the specific deta
 Only create subquestions for complex main questions. Otherwise don't generate any subquestions.
 
 [QUESTION]
-{goal}
+{question}
 
 [TOOLS]
 {tool_info}
@@ -41,7 +41,7 @@ You are {name}, {role}
 You should create one or several new tasks that can help answer the main question [QUESTION]. 
 
 [QUESTION]
-{goal}
+{question}
 
 [YOUR MISSION]
 Based on the [QUESTION], create tasks following these rules: 
@@ -68,7 +68,7 @@ Now, based on the main question [QUESTION], generate the tasks that should be co
 def get_template() -> PromptTemplate:
     template = BASE_TEMPLATE
     PROMPT = PromptTemplate(
-        input_variables=["name", "role", "goal"],
+        input_variables=["name", "role", "question"],
         template=template,
     )
     return PROMPT
@@ -77,12 +77,7 @@ def get_template() -> PromptTemplate:
 def get_subquestions_template() -> PromptTemplate:
     template = SUBQUESTIONS_TEMPLATE
     PROMPT = PromptTemplate(
-        input_variables=["name", "role", "goal", "tool_info"], template=template
+        input_variables=["name", "role", "question", "tool_info"], template=template
     )
     return PROMPT
 
-
-# def get_chat_template() -> ChatPromptTemplate:
-#     messages = []
-#     messages.append(SystemMessagePromptTemplate.from_template(BASE_TEMPLATE))
-#     return ChatPromptTemplate.from_messages(messages)

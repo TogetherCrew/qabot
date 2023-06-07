@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import sys
 from enum import Enum
-from typing import AsyncContextManager, Union
+from typing import AsyncContextManager
 from ui.base import BaseHumanUserInterface
 
 
@@ -49,7 +49,7 @@ class CommandlineUserInterface(BaseHumanUserInterface):
         self,
         title: str,
         message: str,
-        title_color: Union[str, Color] = Color.YELLOW,
+        title_color: str | Color = Color.YELLOW,
         stream: bool = False,
     ) -> None:
         """Print a notification to the user"""

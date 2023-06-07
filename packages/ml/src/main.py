@@ -34,8 +34,6 @@ AGENT_ROLE = os.getenv("AGENT_ROLE", "")
 assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
 AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
 assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
-# AGENT_DIRECTORY = os.getenv("AGENT_DIRECTORY", "")
-# assert AGENT_DIRECTORY, "AGENT_DIRECTORY variable is missing from .env"
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
@@ -98,7 +96,7 @@ def load():
     agent = Agent(
         name=AGENT_NAME,
         role=AGENT_ROLE,
-        goal=AGENT_OBJECTIVE,
+        question=AGENT_OBJECTIVE,
         ui=CommandlineUserInterface(),
         llm=llm,
         openaichat=openaichat,

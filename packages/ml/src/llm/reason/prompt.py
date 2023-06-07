@@ -25,7 +25,7 @@ Pursue simple strategies to complete your task.
 Use ONLY your [TOOLS] available as well as [RELATED KNOWLEDGE] and [RELATED PAST EPISODES] to complete your task.
 
 [QUESTION]
-{goal}
+{question}
 
 [PERFORMANCE EVALUATION]
 1. Review and analyze your actions to ensure you are performing to the best of your abilities.
@@ -58,35 +58,6 @@ discard_task: "If you can't find the answer, please use this tool to discard and
 """
 
 
-BASE_TEMPLATE2 = """
-You are {name}, {role}
-
-You should complete the task defined in [YOUR TASK] in order to find an answer to the question in [QUESTION].
-Your decisions must always be made independently without seeking user assistance or asking for anyone to help.
-Pursue simple strategies to complete your tasks.
-Use ONLY your [TOOLS] available as well as [INSIGHTS FROM THE PAST] to complete your task.
-
-[QUESTION]
-{goal}
-
-[INSIGHTS FROM THE PAST]
-This reminds you of related past events:
-{related_past_episodes}
-
-[YOUR TASK]
-You are given the following task:
-{task}
-
-[TOOLS USAGE]
-You can ONLY USE ONE TOOL at a time and only use tools that are listed below. 
-Remember to use task_complete tool to mark the task as done.
-Format below:
-tool name: "tool description", arg1: <arg1>, arg2: <arg2>
-
-[TOOLS]
-task_complete: "If you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
-{tool_info}
-"""
 
 RECENT_EPISODES_TEMPLATE = """
 [RECENT EPISODES]
@@ -115,43 +86,6 @@ Respond using the format specified in [JSON RESPONSE FORMAT]:
 ).replace(
     "}", "}}"
 )
-
-
-def get_template(memory: List[Episode] = None) -> PromptTemplate:
-    template = BASE_TEMPLATE
-
-    # If there are past conversation logs, append them
-    if len(memory) > 0:
-        # insert current time and date
-        recent_episodes = RECENT_EPISODES_TEMPLATE
-        recent_episodes += f"The current time and date is {time.strftime('%c')}"
-
-        # insert past conversation logs
-        for episode in memory:
-            thoughts_str = json.dumps(episode.thoughts)
-            action_str = json.dumps(episode.action)
-            result = episode.result
-            recent_episodes += thoughts_str + "\n" + action_str + "\n" + result + "\n"
-
-        template += recent_episodes
-
-    template += SCHEMA_TEMPLATE
-
-    PROMPT = PromptTemplate(
-        input_variables=[
-            "name",
-            "role",
-            "goal",
-            "related_knowledge",
-            "related_past_episodes",
-            "task",
-            "tool_info",
-        ],
-        template=template,
-    )
-
-    return PROMPT
-
 
 def get_chat_template(
     memory: List[Episode] = None, should_summary=False
