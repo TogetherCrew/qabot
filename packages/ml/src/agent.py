@@ -216,7 +216,8 @@ class Agent(BaseModel):
                 reasoning_result: Dict[str, Any] | str | None = None
                 try:
                     reasoning_result = await self._reason(
-                        should_try_complete=should_try_complete
+                        should_try_complete=should_try_complete,
+                        should_summary=should_try_complete
                     )  # type: ignore
                     thoughts = reasoning_result["thoughts"]  # type: ignore
                     action = reasoning_result["action"]  # type: ignore
