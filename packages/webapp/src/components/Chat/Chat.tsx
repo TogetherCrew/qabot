@@ -6,7 +6,7 @@ import MobileBar from '../MobileBar';
 import StopGeneratingButton from '@components/StopGeneratingButton/StopGeneratingButton';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useNetwork, erc20ABI } from 'wagmi';
-import { watchReadContract, signMessage } from 'wagmi/actions';
+import { readContract, signMessage } from 'wagmi/actions';
 import { SiweMessage } from 'siwe';
 import { isExpired, decodeToken } from 'react-jwt';
 import { formatEther } from 'viem';
@@ -37,31 +37,25 @@ const Chat = () => {
   const [botTokens, setBotTokens] = useState<bigint>();
   const { chain } = useNetwork();
 
+  const readBalance = async (_address: `0x${string}`) => {
+    const data = await readContract({
+      address: '0x098FeAFa9D8C7a932655D724406b7AF33368b8a7',
+      abi: erc20ABI,
+      functionName: 'balanceOf',
+      args: [_address ?? '0x'],
+    });
+    console.log('BALANCE:', data);
+    setBotTokens(data);
+  };
+
   useEffect(() => {
-    let unwatch: any;
     if (isConnected && address && connector) {
       const _accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
       setAccessToken(_accessToken);
-      console.log('calling watchReadContract');
+      console.log('calling readContract');
       // use wagmi to call balanceOf a ERC20 token
-      unwatch = watchReadContract(
-        {
-          address: '0x098FeAFa9D8C7a932655D724406b7AF33368b8a7',
-          abi: erc20ABI,
-          functionName: 'balanceOf',
-          args: [address ?? '0x'],
-        },
-        (data) => {
-          console.log('BALANCE:', data);
-          setBotTokens(data);
-        }
-      );
+      readBalance(address);
     }
-
-    return () => {
-      console.log('unwatching');
-      unwatch?.();
-    };
   }, [address, isConnected, connector]);
 
   useEffect(() => {
