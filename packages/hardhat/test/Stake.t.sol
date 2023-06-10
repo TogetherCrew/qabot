@@ -17,7 +17,7 @@ contract QAStakeTest is Test {
         token = new QABot();
         tokenProxy = new ERC1967Proxy(address(token), abi.encodeWithSelector(token.initialize.selector));
         token = QABot(address(tokenProxy));
-        token.mint(address(this), 1000);
+        token.mint(address(this), 1000 ether);
 
         stake = new QAStake();
 
@@ -26,11 +26,22 @@ contract QAStakeTest is Test {
     }
 
     function testStakeAndUnstake() public {
-        uint256 AMOUNT_TO_STAKE = 500;
+        uint256 AMOUNT_TO_STAKE = 500 ether;
         token.approve(address(stake), AMOUNT_TO_STAKE);
         stake.stake(AMOUNT_TO_STAKE);
         assertEq(stake.balances(address(this)), AMOUNT_TO_STAKE);
         stake.unstake(AMOUNT_TO_STAKE);
+        assertEq(stake.balances(address(this)), 0);
+    }
+
+    function testStakeAndCharge() public {
+        uint256 AMOUNT_TO_STAKE = 500 ether;
+        token.approve(address(stake), AMOUNT_TO_STAKE);
+        stake.stake(AMOUNT_TO_STAKE);
+        assertEq(stake.balances(address(this)), AMOUNT_TO_STAKE);
+
+        stake.charge(address(this), AMOUNT_TO_STAKE);
+
         assertEq(stake.balances(address(this)), 0);
     }
 
