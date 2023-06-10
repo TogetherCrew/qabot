@@ -50,6 +50,8 @@ const useSubmit = () => {
   const handleSubmit = async () => {
     const chats = useStore.getState().chats;
     const accessToken = useStore.getState().accessToken;
+    const setAccessToken = useStore.getState().setAccessToken;
+
     if (generating || !chats || !accessToken) return;
 
     const updatedChats: ChatInterface[] = JSON.parse(JSON.stringify(chats));
@@ -181,9 +183,13 @@ const useSubmit = () => {
         }
       }
     } catch (e: unknown) {
-      const err = (e as Error).message;
-      console.log(err);
-      setError(err);
+      const err = e as Error;
+      const errMsg = err.message;
+      console.log(errMsg);
+      if (err.cause === 401) {
+        setAccessToken(undefined);
+      }
+      setError(errMsg);
     }
     setGenerating(false);
   };

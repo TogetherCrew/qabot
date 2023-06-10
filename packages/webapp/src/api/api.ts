@@ -164,7 +164,7 @@ export const getAPIStream = async (
     } else if (response.status === 429) {
       error += '\nRate limited!';
     }
-    throw new Error(error);
+    throw new Error(error, { cause: response.status });
   }
 
   const stream = response.body;

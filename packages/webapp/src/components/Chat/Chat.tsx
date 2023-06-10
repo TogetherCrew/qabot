@@ -5,13 +5,12 @@ import ChatContent from './ChatContent';
 import MobileBar from '../MobileBar';
 import StopGeneratingButton from '@components/StopGeneratingButton/StopGeneratingButton';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useNetwork, useSignMessage, erc20ABI } from 'wagmi';
-import { watchReadContract } from 'wagmi/actions';
+import { useAccount, useNetwork, erc20ABI } from 'wagmi';
+import { watchReadContract, signMessage } from 'wagmi/actions';
 import { SiweMessage } from 'siwe';
 import { isExpired, decodeToken } from 'react-jwt';
 import { formatEther } from 'viem';
 import { AccessTokenStatus } from '@store/auth-slice';
-import { set } from 'lodash';
 
 const SIGNATURE_KEY = 'signature';
 const ACCESS_TOKEN_KEY = 'access_token';
@@ -25,7 +24,7 @@ const Chat = () => {
   const statusAccessToken = useStore((state) => state.status);
   const setStatusAccessToken = useStore((state) => state.setStatus);
 
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
 
   const [state, setState] = useState<{
     address?: string;
@@ -37,13 +36,15 @@ const Chat = () => {
   const [_signature, setSignature] = useState<string | undefined>();
   const [botTokens, setBotTokens] = useState<bigint>();
   const { chain } = useNetwork();
-  const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
-    if (isConnected && address) {
+    let unwatch: any;
+    if (isConnected && address && connector) {
+      const _accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      setAccessToken(_accessToken);
       console.log('calling watchReadContract');
       // use wagmi to call balanceOf a ERC20 token
-      const unwatch = watchReadContract(
+      unwatch = watchReadContract(
         {
           address: '0x098FeAFa9D8C7a932655D724406b7AF33368b8a7',
           abi: erc20ABI,
@@ -56,43 +57,54 @@ const Chat = () => {
         }
       );
     }
-  }, [address, isConnected]);
+
+    return () => {
+      console.log('unwatching');
+      unwatch?.();
+    };
+  }, [address, isConnected, connector]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const run = async () => {
+      console.log('Storage:accessToken', accessToken);
+      if (accessToken) {
+        const decodedToken = decodeToken(accessToken);
+        if (isExpired(accessToken)) {
+          console.log('token is expired');
+          setStatusAccessToken(AccessTokenStatus.EXPIRED);
+          setAccessToken(undefined);
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          // do signin process
+          await signIn();
+        } else if (decodedToken) {
+          console.log('token is valid');
+          // means token is valid and not expired
 
-    console.log('Storage:accessToken', accessToken);
-    if (accessToken) {
-      const decodedToken = decodeToken(accessToken);
-      if (isExpired(accessToken)) {
-        console.log('token is expired');
-        setStatusAccessToken(AccessTokenStatus.EXPIRED);
-        // do signin process
-        signIn();
-      } else if (decodedToken) {
-        console.log('token is valid');
-        // means token is valid and not expired
-
-        setAccessToken(accessToken);
-        setStatusAccessToken(AccessTokenStatus.LOGGED_IN);
+          setAccessToken(accessToken);
+          setStatusAccessToken(AccessTokenStatus.LOGGED_IN);
+        } else {
+          setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
+          setAccessToken(undefined);
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          console.log('token is invalid');
+          // means token is invalid
+          await signIn();
+        }
+        // if (!isLogged) {
+        //   updateAccessToken(accessToken);
+        // }
       } else {
+        console.log('no token');
         setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
-        console.log('token is invalid');
-        // means token is invalid
-        signIn();
+        await signIn();
       }
-      // if (!isLogged) {
-      //   updateAccessToken(accessToken);
-      // }
-    }
-  }, [setAccessToken]);
+    };
+    run();
+  }, [accessToken]);
 
   const updateAccessToken = async (token: string) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
     setAccessToken(token);
-    // if (token) {
-    //   reEvaluateToken(token);
-    // }
   };
   const signIn = async () => {
     try {
@@ -104,8 +116,10 @@ const Chat = () => {
         !address ||
         !chainId ||
         statusAccessToken === AccessTokenStatus.LOGGED_IN
-      )
+      ) {
+        console.log('no address or chainId or already logged in');
         return;
+      }
       // Set loading
       setState({
         ...state,
@@ -150,17 +164,14 @@ const Chat = () => {
         expirationTime: nonceJson.data.expirationTime,
       });
 
-      console.log('message', message);
-      console.log('messageStr', JSON.stringify(message.prepareMessage()));
-
       setMessage(message);
 
       const msgPrepared = message.prepareMessage();
+      console.log('messageStr', JSON.stringify(msgPrepared));
       // Prompt for signature
-      const signResult = await signMessageAsync({
-        message: msgPrepared,
-      });
+
       try {
+        const signResult = await signMessage({ message: msgPrepared });
         // /Generate token
         const res = await fetch(`${import.meta.env.VITE_API_URL}/token`, {
           method: 'post',
