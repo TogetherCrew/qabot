@@ -3,6 +3,7 @@ import itertools
 import sys
 from enum import Enum
 from typing import AsyncContextManager
+from server.callback import InfoChunk, TextChunk
 from ui.base import BaseHumanUserInterface
 
 
@@ -62,13 +63,18 @@ class CommandlineUserInterface(BaseHumanUserInterface):
                 raise ValueError(f"{title_color} is not a valid Color")
         self._print_message(title, message, title_color)
 
-    async def stream(self, title: str, message: str):
+    async def stream(self, title: str | None, message: str):
         """Print a notification to the user"""
-        await self._call_callback(f"{f'{title}:' if title else ''}{message}")
+        await self._call_callback_text(f"{f'{title}:' if title else ''}{message}")
 
-    async def _call_callback(self, message: str):
+    async def _call_callback_text(self, message: str):
         if self.callback is not None:
-            await self.callback.on_llm_new_token(f"{message}\n")
+            await self.callback.on_llm_new_token(TextChunk(token=f"{message}\n"))
+            await asyncio.sleep(0.05)
+
+    async def call_callback_info(self, count_tokens: int,model_name: str | None = None):
+        if self.callback is not None:
+            await self.callback.on_llm_new_token(InfoChunk(count_tokens=count_tokens,model_name=model_name))
             await asyncio.sleep(0.05)
 
     async def loading(
@@ -78,7 +84,7 @@ class CommandlineUserInterface(BaseHumanUserInterface):
     ) -> AsyncContextManager:
         """Return a context manager that will display a loading spinner"""
 
-        await self._call_callback(message)
+        await self._call_callback_text(message)
 
         return self.Spinner(message=message, delay=delay)
 
