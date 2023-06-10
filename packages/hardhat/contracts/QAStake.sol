@@ -8,14 +8,15 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-error QAStake__AmountLessOrEqualZero();
-error QAStake__TransferFailed();
-error QAStake__AmountGreaterThanBalance();
+error QAStake__AmountLessOrEqualZero(); // 98550d0b  =>  QAStake__AmountLessOrEqualZero()
+error QAStake__TransferFailed(); // 538bb501  =>  QAStake__TransferFailed()
+error QAStake__AmountGreaterThanBalance(); // e4ab3929 =>  QAStake__AmountGreaterThanBalance()
 
 /// @custom:security-contact felipe.novaes.rocha@gmail.com
 contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 public constant CHARGER_ROLE = keccak256("CHARGER_ROLE");
 
     QABot internal botToken;
 
@@ -23,6 +24,7 @@ contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable
 
     event Staked(address who, uint256 amount);
     event Unstaked(address who, uint256 amount);
+    event Charged(address who, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -37,6 +39,7 @@ contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         _grantRole(UPGRADER_ROLE, msg.sender);
+        _grantRole(CHARGER_ROLE, msg.sender);
         botToken = _botToken;
     }
 
@@ -50,11 +53,14 @@ contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable
 
     function _authorizeUpgrade(address newImplementation) internal virtual override onlyRole(UPGRADER_ROLE) {}
 
-    function stake(uint256 _amount) external {
+    modifier onlyAmountGTEqZero(uint256 _amount) {
         if (_amount <= 0) {
             revert QAStake__AmountLessOrEqualZero();
         }
+        _;
+    }
 
+    function stake(uint256 _amount) external onlyAmountGTEqZero(_amount) {
         balances[msg.sender] += _amount;
 
         bool transferSuccess = botToken.transferFrom(msg.sender, address(this), _amount);
@@ -65,10 +71,7 @@ contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable
         emit Staked(msg.sender, _amount);
     }
 
-    function unstake(uint256 _amount) external {
-        if (_amount <= 0) {
-            revert QAStake__AmountLessOrEqualZero();
-        }
+    function unstake(uint256 _amount) external onlyAmountGTEqZero(_amount) {
         if (_amount > balances[msg.sender]) {
             revert QAStake__AmountGreaterThanBalance();
         }
@@ -81,5 +84,15 @@ contract QAStake is Initializable, PausableUpgradeable, AccessControlUpgradeable
         }
 
         emit Unstaked(msg.sender, _amount);
+    }
+
+    function charge(address from, uint256 _amount) external onlyAmountGTEqZero(_amount) onlyRole(CHARGER_ROLE) {
+        if (_amount > balances[from]) {
+            revert QAStake__AmountGreaterThanBalance();
+        }
+
+        balances[from] -= _amount;
+
+        emit Charged(from, _amount);
     }
 }
