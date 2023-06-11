@@ -55,6 +55,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
 
 async def get_current_user(Authorization: str = Header(...)):
     token = Authorization.split("Bearer ")[1]
+    print(f"token: {token}")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -67,10 +68,13 @@ async def get_current_user(Authorization: str = Header(...)):
         # check expiration date
         exp = payload.get("exp")
         if exp is not None:
-            if datetime.utcnow() > datetime.fromtimestamp(exp):
+            print(f"exp: {exp}")
+            exp_datetime = datetime.utcfromtimestamp(exp)
+            print(f"exp_datetime: {exp_datetime}")
+            if datetime.utcnow() > exp_datetime:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Could not validate credentials, access token expired at {datetime.fromtimestamp(exp)}",
+                    detail=f"Could not validate credentials, access token expired at {exp_datetime}",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
