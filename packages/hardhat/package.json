@@ -6,7 +6,9 @@
   "scripts": {
     "test": "hardhat test",
     "c": "yarn compile",
-    "compile": "hardhat compile"
+    "compile": "hardhat compile",
+    "deploy:anvil": "./script/deploy.anvil.sh && pnpm post-deploy",
+    "post-deploy": "ts-node script/findAddresses.ts --resolveJsonModule"
   },
   "author": "felipe.novaes.rocha@gmail.com",
   "license": "AGPL-3.0-or-later",

@@ -12,5 +12,6 @@ artifacts
 #Foundry files
 artifacts-foundry
 broadcast
+addresses.json
 
 

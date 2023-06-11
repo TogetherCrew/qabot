@@ -3,7 +3,8 @@ import { StoreSlice } from './store';
 
 export enum AccessTokenStatus {
   NOT_LOGGED_IN,
-  LOGGED_IN,
+  LOGGING,
+  LOGGED,
   EXPIRED,
 }
 

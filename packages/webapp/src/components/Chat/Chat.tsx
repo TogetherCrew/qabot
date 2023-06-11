@@ -6,11 +6,12 @@ import MobileBar from '../MobileBar';
 import StopGeneratingButton from '@components/StopGeneratingButton/StopGeneratingButton';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useNetwork, erc20ABI } from 'wagmi';
-import { readContract, signMessage } from 'wagmi/actions';
+import { readContract, watchContractEvent, signMessage } from 'wagmi/actions';
 import { SiweMessage } from 'siwe';
 import { isExpired, decodeToken } from 'react-jwt';
 import { formatEther } from 'viem';
 import { AccessTokenStatus } from '@store/auth-slice';
+import { CONTRACT_ADDRESSES, abiStake, abiToken } from '@utils/contract';
 
 const SIGNATURE_KEY = 'signature';
 const ACCESS_TOKEN_KEY = 'access_token';
@@ -24,6 +25,12 @@ const Chat = () => {
   const statusAccessToken = useStore((state) => state.status);
   const setStatusAccessToken = useStore((state) => state.setStatus);
 
+  const botTokens = useStore((state) => state.botTokens);
+  const setBotTokens = useStore((state) => state.setBotTokens);
+
+  const stakedTokens = useStore((state) => state.stakedTokens);
+  const setStakedTokens = useStore((state) => state.setStakedTokens);
+
   const { address, isConnected, connector } = useAccount();
 
   const [state, setState] = useState<{
@@ -34,28 +41,77 @@ const Chat = () => {
 
   const [_message, setMessage] = useState<SiweMessage>();
   const [_signature, setSignature] = useState<string | undefined>();
-  const [botTokens, setBotTokens] = useState<bigint>();
+
   const { chain } = useNetwork();
 
-  const readBalance = async (_address: `0x${string}`) => {
+  const readBalanceToken = async (_address: `0x${string}`) => {
     const data = await readContract({
-      address: '0x098FeAFa9D8C7a932655D724406b7AF33368b8a7',
+      address: CONTRACT_ADDRESSES.QABotProxy as `0x${string}`,
       abi: erc20ABI,
       functionName: 'balanceOf',
       args: [_address ?? '0x'],
     });
-    console.log('BALANCE:', data);
+    console.log('balance:', data);
     setBotTokens(data);
+  };
+  const readBalanceStaked = async (_address: `0x${string}`) => {
+    const data = await readContract({
+      address: CONTRACT_ADDRESSES.QAStakeProxy as `0x${string}`,
+      abi: abiStake,
+      functionName: 'balances',
+      args: [_address ?? '0x'],
+    });
+    console.log('Staked Balance:', data);
+    setStakedTokens(data as bigint);
   };
 
   useEffect(() => {
+    const unwatchStake = watchContractEvent(
+      {
+        address: CONTRACT_ADDRESSES.QAStakeProxy as `0x${string}`,
+        abi: abiStake,
+        eventName: 'Staked',
+      },
+      (logs) => {
+        console.log('logs', logs);
+        const log: any = logs[0];
+        if (log?.args?.who === address && address) {
+          readBalanceStaked(address);
+        } else {
+          console.log('logs', logs);
+        }
+      }
+    );
+
+    const unwatchToken = watchContractEvent(
+      {
+        address: CONTRACT_ADDRESSES.QABotProxy as `0x${string}`,
+        abi: abiToken,
+        eventName: 'Transfer',
+      },
+      (logs) => {
+        const log: any = logs[0];
+        if (log?.args?.to === address && address) {
+          readBalanceToken(address);
+        } else {
+          console.log('logs', logs);
+        }
+      }
+    );
+
     if (isConnected && address && connector) {
       const _accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
       setAccessToken(_accessToken);
       console.log('calling readContract');
       // use wagmi to call balanceOf a ERC20 token
-      readBalance(address);
+      readBalanceToken(address);
+      readBalanceStaked(address);
     }
+
+    return () => {
+      unwatchStake();
+      unwatchToken();
+    };
   }, [address, isConnected, connector]);
 
   useEffect(() => {
@@ -75,7 +131,7 @@ const Chat = () => {
           // means token is valid and not expired
 
           setAccessToken(accessToken);
-          setStatusAccessToken(AccessTokenStatus.LOGGED_IN);
+          setStatusAccessToken(AccessTokenStatus.LOGGED);
         } else {
           setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
           setAccessToken(undefined);
@@ -93,7 +149,7 @@ const Chat = () => {
         await signIn();
       }
     };
-    run();
+    run().catch(console.error);
   }, [accessToken]);
 
   const updateAccessToken = async (token: string) => {
@@ -109,11 +165,14 @@ const Chat = () => {
       if (
         !address ||
         !chainId ||
-        statusAccessToken === AccessTokenStatus.LOGGED_IN
+        statusAccessToken === AccessTokenStatus.LOGGED ||
+        statusAccessToken === AccessTokenStatus.LOGGING
       ) {
+        console.log('statusAccessToken', statusAccessToken);
         console.log('no address or chainId or already logged in');
         return;
       }
+      setStatusAccessToken(AccessTokenStatus.LOGGING);
       // Set loading
       setState({
         ...state,
@@ -182,6 +241,7 @@ const Chat = () => {
           const json = await res.json();
           console.log('json', json);
           if ('access_token' in json) {
+            setStatusAccessToken(AccessTokenStatus.LOGGED);
             updateAccessToken(json.access_token);
           }
         }
@@ -198,6 +258,7 @@ const Chat = () => {
         });
       } catch (error) {
         console.log('error', error);
+        setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
         setState({
           ...state,
           error: error as Error,
@@ -220,7 +281,7 @@ const Chat = () => {
       }`}
     >
       <ConnectButton />
-      {isConnected && statusAccessToken === AccessTokenStatus.LOGGED_IN && (
+      {isConnected && statusAccessToken === AccessTokenStatus.LOGGED && (
         <div className='flex flex-col items-center justify-center h-full text-white'>
           <div className='text-2xl font-bold'>Welcome</div>
           <>
@@ -228,6 +289,14 @@ const Chat = () => {
               <>
                 <div className='text-1xl font-bold'>Your balance</div>
                 <div className='text-xl'>$BOT:{formatEther(botTokens)}</div>
+              </>
+            )}
+            {stakedTokens && (
+              <>
+                <div className='text-1xl font-bold'>Your balance</div>
+                <div className='text-xl'>
+                  Staked BOTs:{formatEther(stakedTokens)}
+                </div>
               </>
             )}
           </>
