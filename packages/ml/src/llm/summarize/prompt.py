@@ -2,6 +2,12 @@ from langchain.prompts import PromptTemplate
 
 # Convert the schema object to a string
 BASE_TEMPLATE = """
+[QUESTION]
+{question}
+
+[TASK]
+{task}
+
 [THOUGHTS]
 {thoughts}
 
@@ -12,7 +18,9 @@ BASE_TEMPLATE = """
 {result}
 
 [INSTRUCTION]
-Using above [THOUGHTS], [ACTION], and [RESULT OF ACTION], please summarize the event.
+Using only [THOUGHTS], [ACTION], and [RESULT OF ACTION] above, please summarize the event.
+Only summarize information that is relevant to answering [QUESTION] or completing [TASK].
+Include the date, channel and author for the message with the relevant information. Don't include which tool was used.
 
 [SUMMARY]
 """
@@ -35,18 +43,11 @@ You have completed all tasks to get to the answer. Now you need to find a final 
 [NEXT POSSIBLE TASKS]
 {next_possible_tasks}
 
-[RELATED KNOWLEDGE] 
-This reminds you of related knowledge:
-{related_knowledge}
-
-[RELATED PAST EPISODES]
-This reminds you of related past events summarized:
-{related_past_episodes}
-
 [INSTRUCTION]
- - Using above [RESULTS OF COMPLETED TASKS], [RELATED KNOWLEDGE], and [RELATED PAST EPISODES], answer the [QUESTION].
+ - Using only the information in [RESULTS OF COMPLETED TASKS] answer the [QUESTION].
+ - If possible, include the date, channel and/or author in your answer.
  - If you are not able to fully answer the question and you think that performing [NEXT POSSIBLE TASKS] will lead to a better answer, answer "continue"
- - If it's not possible to find the answer, answer "I don't know"
+ - If it's not possible to find the answer, answer "I don't know" and say why you can't find the answer. If relevant, say what additional information is needed to answer the question.
 
 [FINAL ANSWER]
 """
@@ -55,7 +56,7 @@ This reminds you of related past events summarized:
 def get_template() -> PromptTemplate:
     template = BASE_TEMPLATE
     prompt_template = PromptTemplate(
-        input_variables=["thoughts", "action", "result"], template=template
+        input_variables=["question" , "task", "thoughts", "action", "result"], template=template
     )
     return prompt_template
 
@@ -70,8 +71,8 @@ def get_final_answer_template() -> PromptTemplate:
             "question",
             "completed_tasks",
             "results_of_completed_tasks",
-            "related_knowledge",
-            "related_past_episodes",
+            # "related_knowledge",
+            # "related_past_episodes",
             "next_possible_tasks",
         ],
         template=template,

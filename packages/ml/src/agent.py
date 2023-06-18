@@ -209,6 +209,7 @@ class Agent(BaseModel):
             # ReAct: Reasoning
             await self.ui.notify(stream=True, title="", message="Thinking...")
             should_try_complete = False
+            should_summary = True
             keep_it = True
             tool_name = None
             while keep_it:
@@ -217,7 +218,7 @@ class Agent(BaseModel):
                 try:
                     reasoning_result = await self._reason(
                         should_try_complete=should_try_complete,
-                        should_summary=should_try_complete
+                        should_summary=should_summary
                     )  # type: ignore
                     thoughts = reasoning_result["thoughts"]  # type: ignore
                     action = reasoning_result["action"]  # type: ignore
@@ -351,6 +352,7 @@ class Agent(BaseModel):
                     raise e
 
             episode = Episode(
+                question=self.question, task=self.task_manager.get_current_task_string(), 
                 thoughts=thoughts, action=action, result=action_result
             )  # type: ignore
 
@@ -397,8 +399,8 @@ class Agent(BaseModel):
             "question": self.question,
             "completed_tasks": self.task_manager.get_completed_tasks_as_string(),
             "results_of_completed_tasks": self.task_manager.get_results_completed_tasks_as_string(),
-            "related_knowledge": all_related_knowledge,
-            "related_past_episodes": all_related_past_episodes,
+            # "related_knowledge": all_related_knowledge,
+            # "related_past_episodes": all_related_past_episodes,
             "next_possible_tasks": self.task_manager.get_incomplete_tasks_string(),
         }
 

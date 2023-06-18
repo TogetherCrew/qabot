@@ -10,9 +10,10 @@ from langchain.prompts.chat import (
 JSON_SCHEMA_STR = json.dumps(JsonSchema.schema)
 
 ENTITY_EXTRACTION_TEMPLATE = """
-You are an AI assistant for extracting entities from a text [INPUT TEXT].
+You are an AI assistant for extracting relevant factual information from a text [INPUT TEXT].
 You are extracting information to complete task [TASK] in order to answer the question [QUESTION]. 
-Extract ONLY proper nouns from [INPUT TEXT] that help complete the task [TASK] and return them as a JSON object following [JSON RESPONSE FORMAT]. 
+Extract ONLY proper nouns from [INPUT TEXT] that help complete the task [TASK] and return them as a JSON object following [JSON RESPONSE FORMAT].
+Only extract information from [INPUT TEXT] and do not make up any false information.
 
 [QUESTION]:
 {question}
