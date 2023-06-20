@@ -5,13 +5,13 @@ import ChatContent from './ChatContent';
 import MobileBar from '../MobileBar';
 import StopGeneratingButton from '@components/StopGeneratingButton/StopGeneratingButton';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useNetwork, useSignMessage, erc20ABI } from 'wagmi';
-import { watchReadContract } from 'wagmi/actions';
+import { useAccount, useNetwork, erc20ABI } from 'wagmi';
+import { readContract, watchContractEvent, signMessage } from 'wagmi/actions';
 import { SiweMessage } from 'siwe';
 import { isExpired, decodeToken } from 'react-jwt';
 import { formatEther } from 'viem';
 import { AccessTokenStatus } from '@store/auth-slice';
-import { set } from 'lodash';
+import { CONTRACT_ADDRESSES, abiStake, abiToken } from '@utils/contract';
 
 const SIGNATURE_KEY = 'signature';
 const ACCESS_TOKEN_KEY = 'access_token';
@@ -25,7 +25,13 @@ const Chat = () => {
   const statusAccessToken = useStore((state) => state.status);
   const setStatusAccessToken = useStore((state) => state.setStatus);
 
-  const { address, isConnected } = useAccount();
+  const botTokens = useStore((state) => state.botTokens);
+  const setBotTokens = useStore((state) => state.setBotTokens);
+
+  const stakedTokens = useStore((state) => state.stakedTokens);
+  const setStakedTokens = useStore((state) => state.setStakedTokens);
+
+  const { address, isConnected, connector } = useAccount();
 
   const [state, setState] = useState<{
     address?: string;
@@ -35,64 +41,120 @@ const Chat = () => {
 
   const [_message, setMessage] = useState<SiweMessage>();
   const [_signature, setSignature] = useState<string | undefined>();
-  const [botTokens, setBotTokens] = useState<bigint>();
+
   const { chain } = useNetwork();
-  const { signMessageAsync } = useSignMessage();
+
+  const readBalanceToken = async (_address: `0x${string}`) => {
+    const data = await readContract({
+      address: CONTRACT_ADDRESSES.QABotProxy as `0x${string}`,
+      abi: erc20ABI,
+      functionName: 'balanceOf',
+      args: [_address ?? '0x'],
+    });
+    console.log('balance:', data);
+    setBotTokens(data);
+  };
+  const readBalanceStaked = async (_address: `0x${string}`) => {
+    const data = await readContract({
+      address: CONTRACT_ADDRESSES.QAStakeProxy as `0x${string}`,
+      abi: abiStake,
+      functionName: 'balances',
+      args: [_address ?? '0x'],
+    });
+    console.log('Staked Balance:', data);
+    setStakedTokens(data as bigint);
+  };
 
   useEffect(() => {
-    if (isConnected && address) {
-      console.log('calling watchReadContract');
-      // use wagmi to call balanceOf a ERC20 token
-      const unwatch = watchReadContract(
-        {
-          address: '0x098FeAFa9D8C7a932655D724406b7AF33368b8a7',
-          abi: erc20ABI,
-          functionName: 'balanceOf',
-          args: [address ?? '0x'],
-        },
-        (data) => {
-          console.log('BALANCE:', data);
-          setBotTokens(data);
+    const unwatchStake = watchContractEvent(
+      {
+        address: CONTRACT_ADDRESSES.QAStakeProxy as `0x${string}`,
+        abi: abiStake,
+        eventName: 'Staked',
+      },
+      (logs) => {
+        console.log('logs', logs);
+        const log: any = logs[0];
+        if (log?.args?.who === address && address) {
+          readBalanceStaked(address);
+        } else {
+          console.log('logs', logs);
         }
-      );
+      }
+    );
+
+    const unwatchToken = watchContractEvent(
+      {
+        address: CONTRACT_ADDRESSES.QABotProxy as `0x${string}`,
+        abi: abiToken,
+        eventName: 'Transfer',
+      },
+      (logs) => {
+        const log: any = logs[0];
+        if (log?.args?.to === address && address) {
+          readBalanceToken(address);
+        } else {
+          console.log('logs', logs);
+        }
+      }
+    );
+
+    if (isConnected && address && connector) {
+      const _accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      setAccessToken(_accessToken);
+      console.log('calling readContract');
+      // use wagmi to call balanceOf a ERC20 token
+      readBalanceToken(address);
+      readBalanceStaked(address);
     }
-  }, [address, isConnected]);
+
+    return () => {
+      unwatchStake();
+      unwatchToken();
+    };
+  }, [address, isConnected, connector]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const run = async () => {
+      console.log('Storage:accessToken', accessToken);
+      if (accessToken) {
+        const decodedToken = decodeToken(accessToken);
+        if (isExpired(accessToken)) {
+          console.log('token is expired');
+          setStatusAccessToken(AccessTokenStatus.EXPIRED);
+          setAccessToken(undefined);
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          // do signin process
+          await signIn();
+        } else if (decodedToken) {
+          console.log('token is valid');
+          // means token is valid and not expired
 
-    console.log('Storage:accessToken', accessToken);
-    if (accessToken) {
-      const decodedToken = decodeToken(accessToken);
-      if (isExpired(accessToken)) {
-        console.log('token is expired');
-        setStatusAccessToken(AccessTokenStatus.EXPIRED);
-        // do signin process
-        signIn();
-      } else if (decodedToken) {
-        console.log('token is valid');
-        // means token is valid and not expired
-
-        setAccessToken(accessToken);
-        setStatusAccessToken(AccessTokenStatus.LOGGED_IN);
+          setAccessToken(accessToken);
+          setStatusAccessToken(AccessTokenStatus.LOGGED);
+        } else {
+          setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
+          setAccessToken(undefined);
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          console.log('token is invalid');
+          // means token is invalid
+          await signIn();
+        }
+        // if (!isLogged) {
+        //   updateAccessToken(accessToken);
+        // }
       } else {
+        console.log('no token');
         setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
-        console.log('token is invalid');
-        // means token is invalid
-        signIn();
+        await signIn();
       }
-      // if (!isLogged) {
-      //   updateAccessToken(accessToken);
-      // }
-    }
-  }, [setAccessToken]);
+    };
+    run().catch(console.error);
+  }, [accessToken]);
 
   const updateAccessToken = async (token: string) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
     setAccessToken(token);
-    // if (token) {
-    //   reEvaluateToken(token);
-    // }
   };
   const signIn = async () => {
     try {
@@ -103,9 +165,14 @@ const Chat = () => {
       if (
         !address ||
         !chainId ||
-        statusAccessToken === AccessTokenStatus.LOGGED_IN
-      )
+        statusAccessToken === AccessTokenStatus.LOGGED ||
+        statusAccessToken === AccessTokenStatus.LOGGING
+      ) {
+        console.log('statusAccessToken', statusAccessToken);
+        console.log('no address or chainId or already logged in');
         return;
+      }
+      setStatusAccessToken(AccessTokenStatus.LOGGING);
       // Set loading
       setState({
         ...state,
@@ -150,17 +217,14 @@ const Chat = () => {
         expirationTime: nonceJson.data.expirationTime,
       });
 
-      console.log('message', message);
-      console.log('messageStr', JSON.stringify(message.prepareMessage()));
-
       setMessage(message);
 
       const msgPrepared = message.prepareMessage();
+      console.log('messageStr', JSON.stringify(msgPrepared));
       // Prompt for signature
-      const signResult = await signMessageAsync({
-        message: msgPrepared,
-      });
+
       try {
+        const signResult = await signMessage({ message: msgPrepared });
         // /Generate token
         const res = await fetch(`${import.meta.env.VITE_API_URL}/token`, {
           method: 'post',
@@ -177,6 +241,7 @@ const Chat = () => {
           const json = await res.json();
           console.log('json', json);
           if ('access_token' in json) {
+            setStatusAccessToken(AccessTokenStatus.LOGGED);
             updateAccessToken(json.access_token);
           }
         }
@@ -193,6 +258,7 @@ const Chat = () => {
         });
       } catch (error) {
         console.log('error', error);
+        setStatusAccessToken(AccessTokenStatus.NOT_LOGGED_IN);
         setState({
           ...state,
           error: error as Error,
@@ -215,7 +281,7 @@ const Chat = () => {
       }`}
     >
       <ConnectButton />
-      {isConnected && statusAccessToken === AccessTokenStatus.LOGGED_IN && (
+      {isConnected && statusAccessToken === AccessTokenStatus.LOGGED && (
         <div className='flex flex-col items-center justify-center h-full text-white'>
           <div className='text-2xl font-bold'>Welcome</div>
           <>
@@ -223,6 +289,14 @@ const Chat = () => {
               <>
                 <div className='text-1xl font-bold'>Your balance</div>
                 <div className='text-xl'>$BOT:{formatEther(botTokens)}</div>
+              </>
+            )}
+            {stakedTokens && (
+              <>
+                <div className='text-1xl font-bold'>Your balance</div>
+                <div className='text-xl'>
+                  Staked BOTs:{formatEther(stakedTokens)}
+                </div>
               </>
             )}
           </>

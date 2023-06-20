@@ -3,15 +3,16 @@ import { StoreSlice } from './store';
 
 export enum AccessTokenStatus {
   NOT_LOGGED_IN,
-  LOGGED_IN,
+  LOGGING,
+  LOGGED,
   EXPIRED,
 }
 
 export interface AuthWalletSlice {
-  accessToken?: string | undefined;
+  accessToken?: string | undefined | null;
   address?: string | undefined;
   status: AccessTokenStatus;
-  setAccessToken: (accessToken: string) => void;
+  setAccessToken: (accessToken: string | undefined | null) => void;
   setAddress: (address: string) => void;
   setStatus: (status: AccessTokenStatus) => void;
 }
@@ -56,7 +57,7 @@ export const createAuthWalletSlice: StoreSlice<AuthWalletSlice> = (
   accessToken: undefined,
   address: undefined,
   status: AccessTokenStatus.NOT_LOGGED_IN,
-  setAccessToken: (accessToken: string) => {
+  setAccessToken: (accessToken: string | undefined | null) => {
     set((prev: AuthWalletSlice) => ({
       ...prev,
       accessToken: accessToken,

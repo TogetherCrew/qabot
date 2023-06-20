@@ -8,4 +8,10 @@ typechain-types
 #Hardhat files
 cache
 artifacts
+
+#Foundry files
 artifacts-foundry
+broadcast
+addresses.json
+
+

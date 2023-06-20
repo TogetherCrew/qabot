@@ -2,13 +2,12 @@ from pydantic import BaseModel, Extra
 from abc import abstractmethod
 from typing import ContextManager
 
-from langchain.callbacks import AsyncIteratorCallbackHandler
-
+from server.callback import AsyncChunkIteratorCallbackHandler
 
 class BaseHumanUserInterface(BaseModel):
     """Base class for human user interface."""
 
-    callback: AsyncIteratorCallbackHandler | None = None
+    callback: AsyncChunkIteratorCallbackHandler | None = None
 
     class Config:
         extra = Extra.forbid

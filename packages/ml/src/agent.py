@@ -19,9 +19,7 @@ from langchain.llms.base import BaseLLM
 from langchain import LLMChain
 from langchain.chat_models import ChatOpenAI
 
-
-from langchain.callbacks import AsyncIteratorCallbackHandler
-
+from server.callback import AsyncChunkIteratorCallbackHandler
 
 # Define the default values
 DEFAULT_AGENT_DIR = os.path.join(os.path.dirname(__file__), "agent_data")
@@ -126,7 +124,7 @@ class Agent(BaseModel):
     async def run(
         self,
         question: str | None = None,
-        callback: AsyncIteratorCallbackHandler | None = None,
+        callback: AsyncChunkIteratorCallbackHandler | None = None,
     ):
         """
         This method runs the agent.
@@ -141,36 +139,12 @@ class Agent(BaseModel):
             return
         if callback is not None:
             self.ui.callback = callback
-            await callback.on_llm_new_token("Thinking...")
-            await asyncio.sleep(0.05)
+            # self.ui.stream(message="Thinking...")
 
-            # self.ui.callback = callback
         tool_info = self.prodedural_memory.tools_to_prompt(
             self.prodedural_memory.remember_all_tools()
         )
-        # verify if subquestion its empty
-        # if len(self.task_manager.subquestions) == 0:
-        # await self.ui.notify(
-        #     stream=True, title="", message="Generate Subquestions..."
-        # )
-        # Get the relevant tools
-        # If agent has to much tools, use "remember_relevant_tools"
-        # because too many tool information will cause context windows overflow.
-        # Set up the prompt
-        # print("Started")
 
-        # await self.task_manager.generate_subquestions(
-        #     name=self.name,
-        #     role=self.role,
-        #     question=self.question,
-        #     tool_info=tool_info,
-        # )
-
-        # await self.ui.notify(
-        #     title="SUBQUESTIONS",
-        #     message=self.task_manager.subquestions.__str__(),
-        #     title_color="RED",
-        # )
         if len(self.task_manager.tasks) == 0:
             await self.ui.notify(stream=True, title="", message="Generate Task Plan...")
 
@@ -235,9 +209,6 @@ class Agent(BaseModel):
                     await self.ui.notify(
                         title="CRITICISM", message=thoughts["criticism"]  # type: ignore
                     )
-                    # await self.ui.notify(
-                    #     title="PAST_TOOL_USED", message=thoughts["past_tool_used"]
-                    # )
                     await self.ui.notify(stream=True, title="THOUGHT", message=thoughts["summary"])  # type: ignore
                     await self.ui.notify(title="NEXT ACTION", message=action)
                 except Exception as e:
@@ -501,6 +472,7 @@ class Agent(BaseModel):
                 try:
                     enc = tiktoken.encoding_for_model(self.openaichat.model_name)
                     token_count = len(enc.encode(full_prompt))
+                    print("token_count", token_count)
                     if token_count > 4096:
                         await self.ui.notify(
                             title="TOKEN EXCEEDS",
@@ -515,7 +487,12 @@ class Agent(BaseModel):
                         llm_result = await self.openaichat._agenerate(
                             messages=prompt_msg
                         )
-                        # print("llm_result", llm_result)
+                        token_usage = llm_result.llm_output["token_usage"]
+                        total_tokens = token_usage["total_tokens"]
+                        print("llm_result", total_tokens)
+                        
+                        await self.ui.call_callback_info(count_tokens=total_tokens,model_name=llm_result.llm_output["model_name"])
+
                         await self.ui.notify(
                             title="LLM RESULT",
                             message=llm_result.generations[0].message.content,

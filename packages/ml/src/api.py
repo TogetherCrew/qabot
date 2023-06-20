@@ -1,19 +1,20 @@
 import asyncio
 from functools import lru_cache
-from typing import Any, AsyncGenerator
-from fastapi import FastAPI, Request
+from typing import Annotated, Any, AsyncGenerator
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
-
-from langchain.callbacks import AsyncIteratorCallbackHandler
+from server.callback import AsyncChunkIteratorCallbackHandler, InfoChunk, TextChunk
 from pydantic import BaseModel
 
 from fastapi.middleware.cors import CORSMiddleware
+from server.callback import AsyncChunkIteratorCallbackHandler
 
 from main import load
+from server.contracts import call_contract_stake
 
 app = FastAPI()
 
-from login import router as loginRouter
+from login import User, get_current_user, router as loginRouter
 
 app.include_router(loginRouter)
 
@@ -28,22 +29,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-async def generate_response(question: str) -> AsyncGenerator[Any, None]:
-    run: asyncio.Task = None
+async def generate_response(question: str,user:User) -> AsyncGenerator[Any, None]:
+    run: asyncio.Task | None = None
     try:
-        callback_handler = AsyncIteratorCallbackHandler()
+        callback_handler = AsyncChunkIteratorCallbackHandler()
 
         run = asyncio.create_task(get_agent().run(question, callback_handler))
         print("Running")
-        async for token in callback_handler.aiter():
-            # print("Yielding:", token)
-            # yield {"done": "", "value": token}
-            yield token + "\n\n"
+        async for response in callback_handler.aiter():
+            # check token type
+            print("Token:", response)
+            if isinstance(response, TextChunk):
+                yield response.token + "\n\n"
+            elif isinstance(response, InfoChunk):
+                print("Info:", response)
+                print("InfoDict:", response.__dict__)
 
-        print("Done")
+
+            # yield {"done": "", "value": token}
+
         await run
-        print("Done2")
     except Exception as e:
         print("Caught Exception:", e)
     except BaseException as e:  # asyncio.CancelledError
@@ -67,15 +72,25 @@ class Ask(BaseModel):
 
 
 @app.post("/ask/")
-async def ask(request: Request, body: Ask):
+async def ask(request: Request, body: Ask, current_user: Annotated[User, Depends(get_current_user)]):
     print("Received question:", body.question)
+    # get auth header with Bearer split
+    # access_token = request.headers.get("Authorization").split(" ")[1]
+    # print("access_token:", access_token)
+    print(f'current_user:{current_user.address}')
 
-    return StreamingResponse(streamer(generate_response(body.question)))
+    return StreamingResponse(streamer(generate_response(body.question, current_user)))
 
 
 @app.on_event("startup")
 async def startup():
     print("Server Startup!")
+    try:
+        await call_contract_stake()
+    except Exception as e:
+        print("Error calling contract:", e)
+        print("Probably RPC node it's down")
+    
     get_agent()
 
 

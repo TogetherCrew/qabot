@@ -31,10 +31,12 @@ import {
   migrateV6,
   migrateV7,
 } from './migrate';
+import { ContractSlice, createContractSlice } from './contracts-slice';
 
 export type StoreState = ChatSlice &
   InputSlice &
   AuthSlice &
+  ContractSlice &
   AuthWalletSlice &
   ConfigSlice &
   PromptSlice &
@@ -77,6 +79,7 @@ const useStore = create<StoreState>()(
       ...createConfigSlice(set, get),
       ...createPromptSlice(set, get),
       ...createToastSlice(set, get),
+      ...createContractSlice(set, get),
     }),
     {
       name: 'free-chat-gpt',

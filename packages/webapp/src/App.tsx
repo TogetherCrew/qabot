@@ -14,12 +14,31 @@ import Toast from '@components/Toast';
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
-import { polygonMumbai, polygon } from 'wagmi/chains';
+// import { polygonMumbai } from 'wagmi/chains';
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { publicProvider } from 'wagmi/providers/public';
 
+const foundryLocalhost = {
+  id: 31337,
+  name: 'Localhost',
+  network: 'localhost',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: ['http://127.0.0.1:8545'],
+    },
+    public: {
+      http: ['http://127.0.0.1:8545'],
+    },
+  },
+};
+
 const { chains, publicClient } = configureChains(
-  [polygonMumbai],
+  [foundryLocalhost],
   [
     alchemyProvider({ apiKey: import.meta.env.VITE_ALCHEMY_ID! }),
     publicProvider(),
