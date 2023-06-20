@@ -13,6 +13,8 @@ class Episode(BaseModel):
     action: Dict[str, Any] = Field(..., description="action of the agent")
     result: str = Field(..., description="The plan of the event")
     summary: str = Field("", description="summary of the event")
+    question: str = Field("", description="question to be answered")
+    task: str = Field("", description="task to be completed")
 
     # create like equals method to compare two episodes
     def __eq__(self, other):
@@ -51,21 +53,21 @@ class EpisodicMemory(BaseModel):
     async def summarize_and_memorize_episode(self, episode: Episode) -> str:
         """Summarize and memorize an episode."""
         summary = await self._summarize(
-            episode.thoughts, episode.action, episode.result
+            episode.question, episode.task, episode.thoughts, episode.action, episode.result
         )
         episode.summary = summary
         self.memorize_episode(episode)
         return summary
 
     async def _summarize(
-        self, thoughts: Dict[str, Any], action: Dict[str, Any], result: str
+        self, question: str, task: str, thoughts: Dict[str, Any], action: Dict[str, Any], result: str
     ) -> str:
         """Summarize an episode."""
         prompt = get_template()
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
             result = await llm_chain.apredict(
-                thoughts=thoughts, action=action, result=result
+                question=question, task=task, thoughts=thoughts, action=action, result=result
             )
         except Exception as e:
             raise Exception(f"Error: {e}")

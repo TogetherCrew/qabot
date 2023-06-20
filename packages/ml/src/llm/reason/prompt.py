@@ -19,10 +19,10 @@ JSON_SCHEMA_STR = json.dumps(JsonSchema.schema)
 BASE_TEMPLATE = """
 You are {name}, {role}
 
-You should complete the task defined in [YOUR TASK] in order to find an answer to the question in [QUESTION]. 
+You should complete the task defined in [TASK] in order to find an answer to the question in [QUESTION]. 
 Your decisions must always be made independently without seeking user assistance or asking for anyone to help. 
-Pursue simple strategies to complete your task. 
-Use ONLY your [TOOLS] available as well as [RELATED KNOWLEDGE] and [RELATED PAST EPISODES] to complete your task.
+Base your actions on the information in [RELATED KNOWLEDGE] and [RELATED PAST EPISODES]. 
+Use ONLY your [TOOLS] available to complete your task.
 
 [QUESTION]
 {question}
@@ -41,18 +41,18 @@ This reminds you of related knowledge:
 This reminds you of related past events:
 {related_past_episodes}
 
-[YOUR TASK]
+[TASK]
 You are given the following task:
 {task}
 
 [TOOLS USAGE]
 You can ONLY USE ONE TOOL at a time and only use tools that are listed below. 
-Remember to use the task_complete tool to mark the task as done.
+Remember to use the task_complete tool to mark the task as done when you have completed [TASK] or know the answer to [QUESTION].
 Format below:
 tool name: "tool description", arg1: <arg1>, arg2: <arg2>
 
 [TOOLS]
-task_complete: "If you found the answer to complete the task, please use this tool to mark it as done and include your answer to the task in the 'args' field.", result: <Answer to the assigned task>
+task_complete: "Use this tool to mark the task as done and include your answer to the task in the 'args' field. If possible, include the date, channel and author in your answer. Certainly use this tool when you know the answer to [QUESTION] or completed the [TASK].", result: <Answer to the assigned task>
 {tool_info}
 """
 
@@ -77,8 +77,8 @@ Please ensure your output strictly follows [JSON RESPONSE FORMAT].
 [JSON RESPONSE FORMAT]
 {JSON_SCHEMA_STR}
 
-Determine which next [TOOL] to use, check in [RECENT EPISODES] or [RELATED PAST EPISODES] messages if you already performed the same action with the same args for the task and avoid doing it again to prevent an infinite loop. 
-If the task in [TASK] can be completed with the information in [RELATED KNOWLEDGE] or [RELATED PAST EPISODES], always choose to use the task_complete tool.
+Determine which next [TOOL] to use. 
+If the question in [QUESTION] can be answered or the task in [TASK] can be completed with the information in [RELATED KNOWLEDGE] or [RELATED PAST EPISODES], always choose to use the task_complete tool.
 Respond using the format specified in [JSON RESPONSE FORMAT]:
 """.replace(
     "{", "{{"
