@@ -42,8 +42,8 @@ class TaskManager(BaseModel):
     ):
         """Generate a task plan for the agent."""
         prompt = get_template()
-        ''' If you want to change temperature use something like below:
-        ''' be_creative_llm = self.llm.copy(deep=True, update={"temperature": "0.5"})
+        # If you want to change temperature use something like below:
+        # be_creative_llm = self.llm.copy(deep=True, update={"temperature": "0.5"})
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
             result = await llm_chain.apredict(
