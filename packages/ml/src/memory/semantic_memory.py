@@ -88,7 +88,7 @@ class SemanticMemory(BaseModel):
                 f"semantic->extract_entity->Extracted entity: {result_json_obj}\n"
             )
             print(traceback.print_exc())
-            raise Exception(f"Error: {e}")
+            # raise Exception(f"Error: {e}")
         return result_json_obj
 
     @timeit

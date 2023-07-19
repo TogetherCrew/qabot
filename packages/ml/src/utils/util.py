@@ -53,7 +53,6 @@ def timeit(func):
 def get_total_tokens(llm_result: LLMResult) -> int:
     token_usage = llm_result.llm_output["token_usage"]
     total_tokens = token_usage["total_tokens"]
-    print("llm_result", total_tokens)
     return total_tokens
 
 
