@@ -1,4 +1,6 @@
 import inspect
+import traceback
+
 from pydantic import Field, Extra, validator, BaseModel
 from typing import Any, Callable, Dict
 
@@ -26,6 +28,7 @@ class AgentTool(BaseModel):
         try:
             result = self.func(**kwargs)
         except (Exception, KeyboardInterrupt) as e:
+            print(traceback.print_exc())
             raise AgentToolError(str(e))
         return result
 

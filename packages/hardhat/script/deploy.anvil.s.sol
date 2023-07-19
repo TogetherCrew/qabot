@@ -18,7 +18,7 @@ contract DeployAnvil is Script {
         QABot token = new QABot();
         ERC1967Proxy tokenProxy = new ERC1967Proxy(address(token), abi.encodeWithSelector(token.initialize.selector));
         token = QABot(address(tokenProxy));
-        token.mint(address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266), 1000 ether);
+        token.mint(address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266), 100000 ether);
 
         QAStake stake = new QAStake();
         ERC1967Proxy proxy = new ERC1967Proxy(address(stake), abi.encodeWithSelector(stake.initialize.selector, token));
@@ -27,8 +27,8 @@ contract DeployAnvil is Script {
         console.log("TOKEN_CONTRACT_ADDRESS=", address(token));
         console.log("STAKE_CONTRACT_ADDRESS=", address(stake));
 
-        token.approve(address(stake), 1000 ether);
-        stake.stake(1000 ether);
+        token.approve(address(stake), 100000 ether);
+        stake.stake(100000 ether);
 
         vm.stopBroadcast();
     }

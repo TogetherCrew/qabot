@@ -1,7 +1,13 @@
 # first import
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import asyncio
+
+from sentence_transformers import SentenceTransformer
+
 from utils.util import timeit
+from utils.constants import DEFAULT_EMBEDDINGS, AGENT_NAME, AGENT_ROLE, AGENT_OBJECTIVE, OPENAI_API_KEY, \
+    OPENAI_API_MODEL
 
 # os.environ["LANGCHAIN_HANDLER"] = "langchain"
 
@@ -11,46 +17,38 @@ from langchain.llms import OpenAI
 from ui.cui import CommandlineUserInterface
 from agent import Agent
 from dotenv import load_dotenv
-from langchain.embeddings import HuggingFaceEmbeddings
 
 
 # first import
 
 
-# Set API Keys
-load_dotenv()
-OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo")
-assert OPENAI_API_MODEL, "OPENAI_API_MODEL environment variable is missing from .env"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-assert OPENAI_API_KEY, "OPENAI_API_KEY environment variable is missing from .env"
-GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
-assert GOOGLE_CSE_ID, "GOOGLE_CSE_ID environment variable is missing from .env"
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-
-# Set Agent Settings
-AGENT_NAME = os.getenv("AGENT_NAME", "")
-assert AGENT_NAME, "AGENT_NAME variable is missing from .env"
-AGENT_ROLE = os.getenv("AGENT_ROLE", "")
-assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
-AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
-assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
+print('loading main.py')
+convo_tool = DiscordTool(
+    name="conversations_raw",
+    convo_type=ConvoType.RAW,
+    embeddings=DEFAULT_EMBEDDINGS,
+    args={"query": "<Best query possible to get the desired result>"},
+    description="With this tool, you can search all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
+    user_permission_required=False,
+)
 
+convo_tool_summary = DiscordTool(
+    name="conversations_summary",
+    convo_type=ConvoType.SUMMARY,
+    embeddings=DEFAULT_EMBEDDINGS,
+    args={"query": "<Best query possible to get the desired result>"},
+    description="With this tool, you can search daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",
+    user_permission_required=False,
+)
+
+llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY)  # type: ignore
+openaichat = ChatOpenAI(
+    temperature=0.0, openai_api_key=OPENAI_API_KEY, model=OPENAI_API_MODEL
+)  # type: ignore # Optional
 
 @timeit
 def load():
-    llm = OpenAI(temperature=0.0, openai_api_key=OPENAI_API_KEY)  # type: ignore
-    openaichat = ChatOpenAI(
-        temperature=0.0, openai_api_key=OPENAI_API_KEY, model=OPENAI_API_MODEL
-    )  # type: ignore # Optional
-
-    ### 1.Create Agent ###
-    # dir = AGENT_DIRECTORY
-
-    ### 2. Set up tools for agent ###
-    # search = GoogleSearchAPIWrapper()
 
     # search_tool = AgentTool(
     #     name="google_search",
@@ -61,28 +59,7 @@ def load():
     #     user_permission_required=True,
     # )
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-mpnet-base-v2"
-    )
     # model_name="sentence-transformers/all-mpnet-base-v2", model_kwargs={'device': 'cpu'})
-
-    convo_tool = DiscordTool(
-        name="conversations_raw",
-        convo_type=ConvoType.RAW,
-        embeddings=embeddings,
-        args={"query": "<Best query possible to get the desired result>"},
-        description="With this tool, you can search all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
-        user_permission_required=False,
-    )
-
-    convo_tool_summary = DiscordTool(
-        name="conversations_summary",
-        convo_type=ConvoType.SUMMARY,
-        embeddings=embeddings,
-        args={"query": "<Best query possible to get the desired result>"},
-        description="With this tool, you can search daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",
-        user_permission_required=False,
-    )
 
     # convo_tool_filter = AgentTool(
     #     name="conversations_raw_with_filter",
@@ -100,7 +77,6 @@ def load():
         ui=CommandlineUserInterface(),
         llm=llm,
         openaichat=openaichat,
-        # dir=dir
     )
     ## 3. Momoize usage of tools to agent ###
     agent.prodedural_memory.memorize_tools([convo_tool_summary, convo_tool])
@@ -109,4 +85,5 @@ def load():
 
 
 if __name__ == "__main__":
+    print('running __main__')
     asyncio.run(load().run())

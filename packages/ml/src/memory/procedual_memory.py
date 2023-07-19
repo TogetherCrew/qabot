@@ -1,10 +1,14 @@
+import os
+
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from langchain.schema import Document
-from langchain.vectorstores import VectorStore, FAISS
+from langchain.vectorstores import DeepLake
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import List
+
 from tools.base import AgentTool
+from utils.constants import DEFAULT_EMBEDDINGS,  PERIODIC_MEMORY_DIR
 
 
 class ProcedualMemoryException(Exception):
@@ -16,11 +20,10 @@ class ToolNotFoundException(ProcedualMemoryException):
 
 
 class ProcedualMemory(BaseModel):
-    tools: List[AgentTool] = Field([], title="hoge")
-    embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(client=SentenceTransformer(device='cpu')), title="Embeddings to use for tool retrieval")
+    tools: List[AgentTool] = Field([], title="Agent Tools")
+    embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS, title="Embeddings to use for tool retrieval")
     docs: List[Document] = Field([], title="Documents to use for tool retrieval")
-    vector_store: VectorStore = Field(
+    vector_store: DeepLake = Field(
         None, title="Vector store to use for tool retrieval")
 
     class Config:
@@ -62,6 +65,9 @@ class ProcedualMemory(BaseModel):
 
     def _embed_docs(self) -> None:
         """Embed tools."""
-        self.vector_store: FAISS = FAISS.from_documents(
-            self.docs, self.embeddings
-        )
+        if self.vector_store is None:
+            self.vector_store = DeepLake(dataset_path=PERIODIC_MEMORY_DIR,embedding_function=self.embeddings)
+        self.vector_store.add_texts(texts=[doc.page_content for doc in self.docs], metadatas=[doc.metadata for doc in self.docs])
+        # self.vector_store: FAISS = FAISS.from_documents(
+        #     self.docs, self.embeddings
+        # )

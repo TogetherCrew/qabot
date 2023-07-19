@@ -7,6 +7,7 @@
     "test": "hardhat test",
     "c": "yarn compile",
     "compile": "hardhat compile",
+    "foundry": "forge compile",
     "deploy:anvil": "./script/deploy.anvil.sh && pnpm post-deploy",
     "post-deploy": "ts-node script/findAddresses.ts --resolveJsonModule"
   },

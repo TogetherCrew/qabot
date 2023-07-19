@@ -1,5 +1,7 @@
 import time
 
+from langchain.schema import LLMResult
+
 
 class Timeless:
     def __init__(self):
@@ -47,3 +49,13 @@ def timeit(func):
         return result
 
     return wrapper
+
+def get_total_tokens(llm_result: LLMResult) -> int:
+    token_usage = llm_result.llm_output["token_usage"]
+    total_tokens = token_usage["total_tokens"]
+    print("llm_result", total_tokens)
+    return total_tokens
+
+
+def create_deeplake():
+    pass

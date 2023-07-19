@@ -1,11 +1,15 @@
-from sentence_transformers import SentenceTransformer
+import logging
+import os
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
 from langchain import LLMChain
-from langchain.vectorstores import VectorStore, FAISS
+from langchain.vectorstores import DeepLake
 from langchain.embeddings import HuggingFaceEmbeddings
 from llm.summarize.prompt import get_template
+from ui.cui import CommandlineUserInterface
+from utils.constants import DEFAULT_EMBEDDINGS, EPISODIC_MEMORY_DIR
+from utils.util import atimeit, timeit
 
 
 class Episode(BaseModel):
@@ -33,22 +37,27 @@ class EpisodicMemory(BaseModel):
     num_episodes: int = Field(0, description="The number of episodes")
     store: Dict[str, Episode] = Field({}, description="The list of episodes")
     llm: BaseLLM = Field(..., description="llm class for the agent")
-    embeddings: HuggingFaceEmbeddings = Field(
-        HuggingFaceEmbeddings(client=SentenceTransformer(device="cpu")),
+    embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS,
         title="Embeddings to use for tool retrieval",
     )
-    vector_store: VectorStore = Field(
+    vector_store: DeepLake = Field(
         None, title="Vector store to use for tool retrieval"
     )
+
+    ui: CommandlineUserInterface | None = Field(None)
 
     class Config:
         arbitrary_types_allowed = True
 
-    def memorize_episode(self, episode: Episode) -> None:
+    def __del__(self):
+        del self.embeddings
+        del self.vector_store
+
+    async def memorize_episode(self, episode: Episode) -> None:
         """Memorize an episode."""
         self.num_episodes += 1
         self.store[str(self.num_episodes)] = episode
-        self._embed_episode(episode)
+        await self._embed_episode(episode)
 
     async def summarize_and_memorize_episode(self, episode: Episode) -> str:
         """Summarize and memorize an episode."""
@@ -56,7 +65,7 @@ class EpisodicMemory(BaseModel):
             episode.question, episode.task, episode.thoughts, episode.action, episode.result
         )
         episode.summary = summary
-        self.memorize_episode(episode)
+        await self.memorize_episode(episode)
         return summary
 
     async def _summarize(
@@ -75,8 +84,10 @@ class EpisodicMemory(BaseModel):
 
     def remember_all_episode(self) -> List[Episode]:
         """Remember all episodes."""
+        # return list(self.store.values())
         return self.store
 
+    @timeit
     def remember_recent_episodes(self, n: int = 5) -> List[Episode]:
         """Remember recent episodes."""
         if not self.store:  # if empty
@@ -89,9 +100,11 @@ class EpisodicMemory(BaseModel):
         if not self.store:
             return None
         return self.store[-1]
-
+    
+    @timeit
     def remember_related_episodes(self, query: str, k: int = 5) -> List[Episode]:
         """Remember related episodes to a query."""
+        logging.debug('remember_related_episodes')
         if self.vector_store is None:
             return []
         relevant_documents = self.vector_store.similarity_search(query, k=k)
@@ -102,12 +115,16 @@ class EpisodicMemory(BaseModel):
                 action=d.metadata["action"],
                 result=d.metadata["result"],
                 summary=d.metadata["summary"],
+                question=d.metadata["question"],
+                task=d.metadata["task"]
             )
             result.append(episode)
         return result
-
-    def _embed_episode(self, episode: Episode) -> None:
+   
+    @atimeit
+    async def _embed_episode(self, episode: Episode) -> None:
         """Embed an episode and add it to the vector store."""
+        print('_embed_episode')
         texts = [episode.summary]
         metadatas = [
             {
@@ -116,22 +133,37 @@ class EpisodicMemory(BaseModel):
                 "action": episode.action,
                 "result": episode.result,
                 "summary": episode.summary,
+                "question": episode.question,
+                "task": episode.task
             }
         ]
         if self.vector_store is None:
-            self.vector_store = FAISS.from_texts(
-                texts=texts, embedding=self.embeddings, metadatas=metadatas
-            )
-        else:
-            self.vector_store.add_texts(texts=texts, metadatas=metadatas)
+            print('build deeplake')
+            self.vector_store = DeepLake(read_only=False, dataset_path=EPISODIC_MEMORY_DIR,embedding_function=self.embeddings)
+            # self.vector_store = FAISS.from_texts(
+            #     texts=texts, embedding=self.embeddings, metadatas=metadatas
+            # )
+        # else:
+        print('_embed_episode::add_texts')
+        self.vector_store.add_texts(texts=texts, metadatas=metadatas)
 
-    def save_local(self, path: str) -> None:
+    async def save_local(self, path: str) -> None:
         """Save the vector store locally."""
-        vs: FAISS = self.vector_store
-        vs.save_local(folder_path=path)
+        # async def _save():
+        print('save_local_inner')
+        # self.vector_store.save_local(folder_path=path)
+        # await asyncio.to_thread(vs.save_local, folder_path=path)
+        print('post save_local inner')
+        # await asyncio.create_task(_save())
 
     def load_local(self, path: str) -> None:
         """Load the vector store locally."""
-        self.vector_store = FAISS.load_local(
-            folder_path=path, embeddings=self.embeddings
-        )
+        print('local_load inner')
+        # async def _load():
+        #     self.vector_store = FAISS.load_local(
+        #         folder_path=path, embeddings=self.embeddings
+        #     )
+        self.vector_store = DeepLake(read_only=False, dataset_path=path,embedding_function=self.embeddings)
+        # await asyncio.create_task(_load())
+        # await asyncio.to_thread(FAISS.load_local, folder_path=path, embeddings=self.embeddings)
+            
