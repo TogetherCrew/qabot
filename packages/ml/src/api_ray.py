@@ -30,7 +30,6 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from server.callback import AsyncChunkIteratorCallbackHandler
 
-from server.contracts import call_contract_stake, charge_stake, staked_balance_for
 
 from asgi_correlation_id import correlation_id
 from logging.config import dictConfig
@@ -171,19 +170,19 @@ class AsyncResponse(BaseModel):
             print(traceback.format_exc())
             logging.exception('Something got wrong')
         finally:
-            async def charge_user():
-                print("Charging user:", user.address, self.total_tokens)
-                if await user.charge(self.total_tokens):
-                    await user.stake_balance()
-
-            if self.total_tokens > 0:
-                stake_balance = await user.stake_balance()
-                if stake_balance >= self.total_tokens:
-                    self.background_tasks.add_task(charge_user)
-                else:
-                    print(f'Not enough stake_balance {stake_balance} for total_tokens: {self.total_tokens}')
-            else:
-                print('Not enough tokens consumed to charge:', self.total_tokens)
+            # async def charge_user():
+            #     print("Charging user:", user.address, self.total_tokens)
+            #     if await user.charge(self.total_tokens):
+            #         await user.stake_balance()
+            #
+            # if self.total_tokens > 0:
+            #     stake_balance = await user.stake_balance()
+            #     if stake_balance >= self.total_tokens:
+            #         self.background_tasks.add_task(charge_user)
+            #     else:
+            #         print(f'Not enough stake_balance {stake_balance} for total_tokens: {self.total_tokens}')
+            # else:
+            #     print('Not enough tokens consumed to charge:', self.total_tokens)
             if run:
                 run.cancel()
                 del run
@@ -231,13 +230,13 @@ class FastAPIWrapper:
     async def startup():
         configure_logging()
         print("Server Startup!")
-        try:
-            await call_contract_stake()
-            # await charge_stake(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",amount_in_ethers=100)
-            # await staked_balance_for(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
-        except Exception as e:
-            print("Error calling contract:", e)
-            print("Probably RPC node it's down")
+        # try:
+        #     await call_contract_stake()
+        #     # await charge_stake(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",amount_in_ethers=100)
+        #     # await staked_balance_for(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+        # except Exception as e:
+        #     print("Error calling contract:", e)
+        #     print("Probably RPC node it's down")
 
     @app.on_event("shutdown")
     async def shutdown():

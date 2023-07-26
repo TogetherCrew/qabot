@@ -9,23 +9,17 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import torch
 
 dc = torch.cuda.device_count()
-print('dc', dc)
+print('torch.cuda.device_count:', dc)
 if __name__ == "__main__":
     import uvicorn
-    import requests
 
     uvicorn.run("api:app", host="0.0.0.0", port=3333, reload=True)
-
-
 else:
 
     import asyncio
-    import requests
-    from web3 import Web3
-    from functools import lru_cache
     from typing import Annotated, AsyncGenerator
     from asgi_correlation_id import CorrelationIdMiddleware
-    from fastapi import BackgroundTasks, Depends, FastAPI, Request, status
+    from fastapi import BackgroundTasks, Depends, FastAPI, Request
     from fastapi.responses import StreamingResponse
     from fastapi import HTTPException, Request
     from fastapi.exception_handlers import http_exception_handler
@@ -37,8 +31,6 @@ else:
     from fastapi.middleware.cors import CORSMiddleware
     from server.callback import AsyncChunkIteratorCallbackHandler
 
-    from server.contracts import call_contract_stake, charge_stake, staked_balance_for
-
     from asgi_correlation_id import correlation_id
     from logging.config import dictConfig
 
@@ -49,7 +41,7 @@ else:
 
     logging.basicConfig(level=logging.INFO)
 
-    qabot_logger = logging.getLogger("ray.serve")
+    qabot_logger = logging.getLogger("qabot")
     qabot_logger.setLevel(logging.DEBUG)
 
     app = FastAPI()
@@ -174,19 +166,22 @@ else:
                 print(traceback.format_exc())
                 logging.exception('Something got wrong')
             finally:
-                async def charge_user():
-                    print("Charging user:", user.address, self.total_tokens)
-                    if await user.charge(self.total_tokens):
-                        await user.stake_balance()
+                # async def charge_user():
+                #     print("Charging user:", user.address, self.total_tokens)
+                #     if await user.charge(self.total_tokens):
+                #         await user.stake_balance()
 
-                if self.total_tokens > 0:
-                    stake_balance = await user.stake_balance()
-                    if stake_balance >= self.total_tokens:
-                        self.background_tasks.add_task(charge_user)
-                    else:
-                        print(f'Not enough stake_balance {stake_balance} for total_tokens: {self.total_tokens}')
-                else:
-                    print('Not enough tokens consumed to charge:', self.total_tokens)
+                # if self.total_tokens > 0:
+                #     stake_balance = await user.stake_balance()
+                #     if stake_balance >= self.total_tokens:
+                #         self.background_tasks.add_task(charge_user)
+                #     else:
+                #         print(f'Not enough stake_balance {stake_balance} for total_tokens: {self.total_tokens}')
+                # else:
+                #     print('Not enough tokens consumed to charge:', self.total_tokens)
+
+                print('Total tokens used:', self.total_tokens)
+
                 if run:
                     run.cancel()
                     del run
@@ -216,12 +211,12 @@ else:
         print(f'{request.client.host}:{request.client.port}')
         qabot_logger.debug(f'address:{current_user.address} ip:{request.client.host}:{request.client.port}')
         # get ip from request
-        if await current_user.stake_balance() < Web3.to_wei(5000, "ether"):
-            # raise ValueError("Not enough stake balance, need at least 5000 BOT tokens")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Not enough stake balance, need at least 5000 BOT tokens",
-            )
+        # if await current_user.stake_balance() < Web3.to_wei(5000, "ether"):
+        #     # raise ValueError("Not enough stake balance, need at least 5000 BOT tokens")
+        #     raise HTTPException(
+        #         status_code=status.HTTP_404_NOT_FOUND,
+        #         detail="Not enough stake balance, need at least 5000 BOT tokens",
+        #     )
 
         ar = AsyncResponse(background_tasks=background_tasks)
         return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question, current_user)))
@@ -230,13 +225,13 @@ else:
     async def startup():
         configure_logging()
         print("Server Startup!")
-        try:
-            await call_contract_stake()
-            # await charge_stake(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",amount_in_ethers=100)
-            # await staked_balance_for(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
-        except Exception as e:
-            print("Error calling contract:", e)
-            print("Probably RPC node it's down")
+        # try:
+            # await call_contract_stake()
+            # # await charge_stake(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",amount_in_ethers=100)
+            # # await staked_balance_for(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+        # except Exception as e:
+        #     print("Error calling contract:", e)
+        #     print("Probably RPC node it's down")
 
     @app.on_event("shutdown")
     async def shutdown():

@@ -11,8 +11,6 @@ from pydantic import BaseModel
 import siwe
 from siwe import SiweMessage
 
-from server.contracts import staked_balance_for, charge_stake
-
 load_dotenv()
 
 router = APIRouter()
@@ -41,13 +39,11 @@ class User(BaseModel):
     address: str
     request_id: str | None
 
-    async def stake_balance(self):
-        return await staked_balance_for(self.address)
-
-    async def charge(self, amount):
-        return await charge_stake(self.address, amount)
-
-
+    # async def stake_balance(self):
+    #     return await staked_balance_for(self.address)
+    #
+    # async def charge(self, amount):
+    #     return await charge_stake(self.address, amount)
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -97,7 +93,7 @@ async def get_current_user(request: Request, Authorization: str = Header(...)):
     except JWTError:
         raise credentials_exception
 
-    return User(address=address,request_id=request_id)
+    return User(address=address, request_id=request_id)
 
 
 def verify_signature(signatureObj: SiginETH):
@@ -134,7 +130,7 @@ def verify_signature(signatureObj: SiginETH):
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(request:Request, body_json: SiginETH):
+async def login_for_access_token(request: Request, body_json: SiginETH):
     print(f'{request.client.host}:{request.client.port}')
     # user = authent    icate_user(fake_users_db, form_data.username, form_data.password)
     print(body_json)
@@ -156,10 +152,10 @@ async def login_for_access_token(request:Request, body_json: SiginETH):
 
 
 @router.post("/dev_token", response_model=Token)
-async def login_for_access_token(request:Request,):
+async def login_for_access_token(request: Request ):
     print(f'{request.client.host}:{request.client.port}')
     # user = authent    icate_user(fake_users_db, form_data.username, form_data.password)
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES*2*24*7)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES * 2 * 24 * 7)
     access_token = create_access_token(
         data={"sub": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"}, expires_delta=access_token_expires
     )
