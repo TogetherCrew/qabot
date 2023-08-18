@@ -7,6 +7,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import DeepLake
 from langchain.schema import Document
 from langchain.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
 
 import DB_interactions
 from summarize_discord import summarize_discord_main
@@ -38,7 +39,7 @@ def main(args):
 
     # HuggingFace embeddings model
     model_name = "sentence-transformers/all-mpnet-base-v2"
-    embeddings = HuggingFaceEmbeddings(model_name=model_name)
+    embeddings = HuggingFaceEmbeddings(model_name=model_name,client=SentenceTransformer(device='cpu'))
 
     # embed and store data
     vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings,

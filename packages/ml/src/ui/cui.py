@@ -3,8 +3,12 @@ import itertools
 import sys
 from enum import Enum
 from typing import AsyncContextManager
+
+from langchain.schema import LLMResult, ChatResult
+
 from server.callback import InfoChunk, TextChunk
 from ui.base import BaseHumanUserInterface
+from utils.util import get_total_tokens
 
 
 class Color(Enum):
@@ -75,6 +79,14 @@ class CommandlineUserInterface(BaseHumanUserInterface):
     async def call_callback_info(self, count_tokens: int,model_name: str | None = None):
         if self.callback is not None:
             await self.callback.on_llm_new_token(InfoChunk(count_tokens=count_tokens,model_name=model_name))
+            await asyncio.sleep(0.05)
+
+    async def call_callback_info_llm_result(self, llm_result: LLMResult | ChatResult):
+        await self.call_callback_info(count_tokens=get_total_tokens(llm_result),model_name=llm_result.llm_output["model_name"])
+
+    async def call_callback_end(self):
+        if self.callback is not None:
+            await self.callback.on_llm_end(response=None)
             await asyncio.sleep(0.05)
 
     async def loading(

@@ -12,9 +12,8 @@ from langchain.prompts.chat import (
 )
 from langchain.schema import SystemMessage
 
-
 # Convert the schema object to a string
-JSON_SCHEMA_STR = json.dumps(JsonSchema.schema)
+JSON_SCHEMA_STR = json.dumps(JsonSchema.schema, indent=4)
 
 BASE_TEMPLATE = """
 You are {name}, {role}
@@ -64,7 +63,6 @@ This reminds you of recent events:
 """
 
 SCHEMA_TEMPLATE = f"""
-
 [RULE]
 Your response must be provided exclusively in the JSON format outlined below, without any exceptions.
 Any additional text, explanations, or apologies outside of the JSON structure will not be accepted.

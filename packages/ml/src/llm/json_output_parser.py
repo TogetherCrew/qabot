@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from jsonschema import validate, ValidationError
 from langchain.llms.base import BaseLLM
 import contextlib
-from marvin import ai_fn
+# from marvin import ai_fn
 
 
 class LLMJsonOutputParserException(Exception):
@@ -28,7 +28,7 @@ class FixJsonException(LLMJsonOutputParserException):
     pass
 
 
-@ai_fn()
+# @ai_fn()
 def auto_fix_json(json_str: str, schema: str) -> str:
     """
     Fixes the provided JSON string to make it parseable and fully complient with the provided schema.

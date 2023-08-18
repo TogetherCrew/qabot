@@ -1,6 +1,8 @@
-import asyncio
 import os
 import json
+import traceback
+
+import aiofiles
 import tiktoken
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
@@ -9,6 +11,7 @@ from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
 from serializer_manager import SerializationManager
+from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION, EPISODIC_MEMORY_DIR, SEMANTIC_MEMORY_DIR
 from utils.util import atimeit
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
@@ -21,14 +24,6 @@ from langchain.chat_models import ChatOpenAI
 
 from server.callback import AsyncChunkIteratorCallbackHandler
 
-# Define the default values
-DEFAULT_AGENT_DIR = os.path.join(os.path.dirname(__file__), "agent_data")
-print(f"DEFAULT_AGENT_DIR: {DEFAULT_AGENT_DIR}")
-
-# Define the base path for the serialization
-BASE_PATH_SERIALIZATION = os.path.join(DEFAULT_AGENT_DIR, "serialization")
-
-print(f"BASE_PATH_SERIALIZATION: {BASE_PATH_SERIALIZATION}")
 # Define the schema for the llm output
 REASON_JSON_SCHEMA_STR = json.dumps(ReasonSchema.schema)
 
@@ -75,38 +70,29 @@ class Agent(BaseModel):
         super().__init__(**data)
 
         self.task_manager = TaskManager(llm=self.llm)
-        self.episodic_memory = EpisodicMemory(llm=self.llm)
-        self.semantic_memory = SemanticMemory(llm=self.llm, openaichat=self.openaichat)
+        self.episodic_memory = EpisodicMemory(llm=self.llm, ui=self.ui)
+        self.semantic_memory = SemanticMemory(llm=self.llm, openaichat=self.openaichat, ui=self.ui)
 
         self._get_absolute_path()
         self._create_dir_if_not_exists()
 
+    def __del__(self):
+        del self.task_manager
+        del self.episodic_memory
+        del self.semantic_memory
+
+    async def initialize(self):
         if self._agent_data_exists():
-            load_data = self.ui.get_binary_user_input(
-                "Agent data already exists. Do you want to load the data?\n"
-                "If you choose 'Yes', the data will be loaded.\n"
-                "If you choose 'No', the data will be overwritten."
-            )
+            # load_data = self.ui.get_binary_user_input(
+            #     "Agent data already exists. Do you want to load the data?\n"
+            #     "If you choose 'Yes', the data will be loaded.\n"
+            #     "If you choose 'No', the data will be overwritten."
+            # ) TODO: Fix it
+            load_data = False
             if load_data:
-                self.load_agent()
+                await self.load_agent()
             else:
                 print("INFO", "Agent data will be overwritten.")
-                # await self.ui.notify("INFO", "Agent data will be overwritten.")
-        # self.ui.notify(
-        #     "START", f"Hello, I am {self.name}. {self.role}. My question is {self.question}.")
-
-        # Fix: add missing arguments to the following method calls
-        # self.task_manager.initialize_tasks(subquestions=[], tasks=[], current_task_id=0)
-        # self.episodic_memory.initialize(num_episodes=0, store=None, embeddings=None, vector_store=None)
-        # self.semantic_memory.initialize(num_episodes=0, embeddings=None, vector_store=None)
-        tm = self.sm.load_and_deserialize(f"task_manager::{self.question}")
-        if tm is not None:
-            # self.ui.notify("INFO", "Task Manager loaded.")
-            print("INFO", "Task Manager loaded.")
-            self.task_manager = tm
-        else:
-            # self.ui.notify("INFO", "Task Manager not loaded.")
-            print("INFO", "Task Manager not loaded.")
 
     def _get_absolute_path(self):
         return os.path.abspath(self.dir)
@@ -122,16 +108,13 @@ class Agent(BaseModel):
 
     @atimeit
     async def run(
-        self,
-        question: str | None = None,
-        callback: AsyncChunkIteratorCallbackHandler | None = None,
+            self,
+            question: str | None = None,
+            callback: AsyncChunkIteratorCallbackHandler | None = None,
     ):
         """
         This method runs the agent.
         """
-
-        # self.start_time = time.time()
-
         if question is not None:
             self.question = question
         if self.question is None:
@@ -140,6 +123,17 @@ class Agent(BaseModel):
         if callback is not None:
             self.ui.callback = callback
             # self.ui.stream(message="Thinking...")
+
+        await self.initialize()
+
+        tm = self.sm.load_and_deserialize(f"task_manager::{self.question}")
+        if tm is not None:
+            # self.ui.notify("INFO", "Task Manager loaded.")
+            print("INFO", "Task Manager loaded.")
+            self.task_manager = tm
+        else:
+            # self.ui.notify("INFO", "Task Manager not loaded.")
+            print("INFO", "Task Manager not loaded.")
 
         tool_info = self.prodedural_memory.tools_to_prompt(
             self.prodedural_memory.remember_all_tools()
@@ -154,15 +148,15 @@ class Agent(BaseModel):
                 question=self.question,
                 tool_info=tool_info,
             )
+
+            await self.sm.serialize_and_save(self.task_manager, f"task_manager::{self.question}")
+
         await self.ui.notify(
             title="ALL TASKS",
             message=self.task_manager.get_incomplete_tasks_string(),
             title_color="BLUE",
         )
 
-        await self.sm.serialize_and_save(
-            self.task_manager, f"task_manager::{self.question}"
-        )
         while True:
             current_task = self.task_manager.get_current_task_string()
             if current_task:
@@ -217,12 +211,19 @@ class Agent(BaseModel):
                         message=str(reasoning_result),
                         title_color="RED",
                     )
+                    await self.ui.notify(
+                        title="ERROR",
+                        message=e.__dict__.__str__(),
+                        title_color="RED",
+                    )
+                    print(traceback.format_exc())
+
                     raise e
 
                 # check if the tool_name and args already was used in the past in that task.
                 # if so, skip the action.
                 if self.task_manager.is_action_already_used_in_current_task(
-                    tool_name, args
+                        tool_name, args
                 ):  # TODO FIX: should be a list of args instead of the last one
                     await self.ui.notify(
                         title="SKIP ACTION",
@@ -233,19 +234,19 @@ class Agent(BaseModel):
                     keep_it = True
                 else:
                     await self.ui.notify(
-                        title="BREAK", title_color="RED", message="Continue"
+                        title="BREAK?", title_color="RED", message="Continue"
                     )
 
                 if tool_name == "task_complete":
                     await self.ui.notify(
-                        title="BREAK",
+                        title="BREAK?",
                         title_color="RED",
                         message="Task is completed.",
                     )
                     break
                 if tool_name == "discard_task":
                     await self.ui.notify(
-                        title="BREAK",
+                        title="BREAK?",
                         title_color="RED",
                         message="Discard Task.",
                     )
@@ -264,14 +265,16 @@ class Agent(BaseModel):
                     stream=True, title="", message="Try final answer..."
                 )
                 result = await self._final_answer()
-                # trim result
-                if result and "I don't know." not in result.strip():
-                    await self.ui.notify(title="END", message="")
-                    break
 
                 # save agent data
                 await self.ui.notify(title="", message="Save agent data...")
-                self.save_agent()
+                await self.save_agent()
+
+                # trim result
+                if result and result.strip() != "I don't know.":
+                    await self.ui.notify(title="END", message="")
+                    await self.ui.call_callback_end()
+                    break
 
             # Action with tools
             else:
@@ -323,7 +326,7 @@ class Agent(BaseModel):
                     raise e
 
             episode = Episode(
-                question=self.question, task=self.task_manager.get_current_task_string(), 
+                question=self.question, task=self.task_manager.get_current_task_string(),
                 thoughts=thoughts, action=action, result=action_result
             )  # type: ignore
 
@@ -376,13 +379,22 @@ class Agent(BaseModel):
         }
 
         final_prompt_formatted = final_prompt.format_prompt(**input_variables)
-        await self.ui.notify(
-            title="FINAL PROMPT", message=final_prompt_formatted.to_string()
-        )
+        # await self.ui.notify(
+        #     title="FINAL PROMPT", message=final_prompt_formatted.to_string()
+        # )
 
         llm_chain = LLMChain(prompt=final_prompt, llm=self.llm)
         try:
-            result = await llm_chain.apredict(**input_variables)
+            # result = await llm_chain.apredict(**input_variables)
+            llm_result = await llm_chain.agenerate([input_variables])
+
+            #  llm_result = await self.openaichat._agenerate(
+            #         messages=prompt_msg
+            #     )
+
+            result = llm_result.generations[0][0].text
+
+            await self.ui.call_callback_info_llm_result(llm_result)
         except Exception as e:
             raise Exception(f"Error: {e}")
 
@@ -453,6 +465,7 @@ class Agent(BaseModel):
 
             # If OpenAI Chat is available, it is used for higher accuracy results.
             if self.openaichat:
+                await self.ui.notify(stream=True, title="", message="Reasoning...")
                 prompt = ReasonPrompt.get_chat_template(
                     memory=memory, should_summary=should_summary
                 ).format_prompt(
@@ -468,7 +481,7 @@ class Agent(BaseModel):
 
                 full_prompt = " ".join([msg.content for msg in prompt_msg])
 
-                await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
+                # await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
                 try:
                     enc = tiktoken.encoding_for_model(self.openaichat.model_name)
                     token_count = len(enc.encode(full_prompt))
@@ -487,38 +500,16 @@ class Agent(BaseModel):
                         llm_result = await self.openaichat._agenerate(
                             messages=prompt_msg
                         )
-                        token_usage = llm_result.llm_output["token_usage"]
-                        total_tokens = token_usage["total_tokens"]
-                        print("llm_result", total_tokens)
-                        
-                        await self.ui.call_callback_info(count_tokens=total_tokens,model_name=llm_result.llm_output["model_name"])
+                        await self.ui.call_callback_info_llm_result(llm_result)
 
-                        await self.ui.notify(
-                            title="LLM RESULT",
-                            message=llm_result.generations[0].message.content,
-                            # message=llm_result.llm_output["total_tokens"],
-                        )
+                        # await self.ui.notify(
+                        #     title="LLM RESULT",
+                        #     message=llm_result.generations[0].message.content,
+                        # )
                         result = llm_result.generations[0].message.content
                     # openai.error.InvalidRequestError: This model's maximum context length is 4097 tokens. However, your messages resulted in 4879 tokens. Please reduce the length of the messages.
                 except Exception as e:
                     raise Exception(f"Error: {e}")
-
-            else:
-                # Get the result from the LLM
-                # prompt = ReasonPrompt.get_template(memory=memory)
-                # llm_chain = LLMChain(prompt=prompt, llm=self.llm)
-                # try:
-                #     result = await llm_chain.apredict(
-                #         name=self.name,
-                #         role=self.role,
-                #         question=self.question,
-                #         related_past_episodes=related_past_episodes,
-                #         elated_knowledge=related_knowledge,
-                #         task=current_task_description,
-                #         tool_info=tool_info,
-                #     )
-                # except Exception as e:
-                raise Exception("Should never happen")
 
             # Parse and validate the result
             try:
@@ -557,12 +548,14 @@ class Agent(BaseModel):
 
         return result
 
-    def save_agent(self) -> None:
-        episodic_memory_dir = f"{self.dir}/episodic_memory"
-        semantic_memory_dir = f"{self.dir}/semantic_memory"
+    async def save_agent(self) -> None:
+        episodic_memory_dir = EPISODIC_MEMORY_DIR
+        semantic_memory_dir = SEMANTIC_MEMORY_DIR
         filename = f"{self.dir}/agent_data.json"
-        self.episodic_memory.save_local(path=episodic_memory_dir)
-        self.semantic_memory.save_local(path=semantic_memory_dir)
+        # print("Episodic memory will save to", episodic_memory_dir)
+        # await self.episodic_memory.save_local(path=episodic_memory_dir)
+        # print("Semantic memory will save to", semantic_memory_dir)
+        # await self.semantic_memory.save_local(path=semantic_memory_dir) TODO: Fix it
 
         data = {
             "name": self.name,
@@ -570,10 +563,11 @@ class Agent(BaseModel):
             "episodic_memory": episodic_memory_dir,
             "semantic_memory": semantic_memory_dir,
         }
-        with open(filename, "w") as f:
-            json.dump(data, f)
+        print("Agent data will save to", filename)
+        async with aiofiles.open(filename, "w") as f:
+            await f.write(json.dumps(data))
 
-    def load_agent(self) -> None:
+    async def load_agent(self) -> None:
         absolute_path = self._get_absolute_path()
         if "agent_data.json" not in os.listdir(absolute_path):
             # await self.ui.notify(
@@ -581,8 +575,9 @@ class Agent(BaseModel):
             # )
             print("ERROR", "Agent data does not exist.")
 
-        with open(os.path.join(absolute_path, "agent_data.json")) as f:
-            agent_data = json.load(f)
+        async with aiofiles.open(os.path.join(absolute_path, "agent_data.json")) as f:
+            data = await f.read()
+            agent_data = json.loads(data)
             self.name = agent_data["name"]
             self.role = agent_data["role"]
 

@@ -32,6 +32,7 @@ class TaskManager(BaseModel):
     current_task_id: int = Field(1, description="The last task id")
     llm: BaseLLM = Field(..., description="llm class for the agent")
 
+
     def discard_current_task(self):
         """Discard the current task."""
         self.tasks = [task for task in self.tasks if task.id != self.current_task_id]
@@ -41,6 +42,8 @@ class TaskManager(BaseModel):
     ):
         """Generate a task plan for the agent."""
         prompt = get_template()
+        # If you want to change temperature use something like below:
+        # be_creative_llm = self.llm.copy(deep=True, update={"temperature": "0.5"})
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
         try:
             result = await llm_chain.apredict(

@@ -18,6 +18,7 @@ class SerializationManager(BaseModel):
         serialized_obj = pickle.dumps(obj)
         filename = base58.b58encode(name.encode()).decode()
         filepath = f"{self.base_path}/{filename}.pkl"
+        print(f'serialize_and_save {name}, {filepath}')
         try:
             await asyncio.to_thread(os.makedirs, self.base_path, exist_ok=True)
             async with aiofiles.open(filepath, "wb") as f:
@@ -29,11 +30,13 @@ class SerializationManager(BaseModel):
         """Load a serialized object from a file with a base58-encoded name and deserialize it."""
         filename = base58.b58encode(name.encode()).decode()
         filepath = f"{self.base_path}/{filename}.pkl"
+        print(f'load_and_deserialize {name}, {filepath}')
         try:
             with open(filepath, "rb") as f:
                 serialized_obj = f.read()
             obj = pickle.loads(serialized_obj)
             return obj
-        except (FileNotFoundError, pickle.UnpicklingError):
+        except (FileNotFoundError, pickle.UnpicklingError) as e:
             print(f"Error loading and deserializing object from file: {filename}")
+            print(f"Error detail: {e}")
             return None

@@ -8,6 +8,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 
 from tools.base import AgentTool
+from utils.constants import DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH
 
 
 class ConvoType(Enum):
@@ -42,13 +43,13 @@ class DiscordTool(AgentTool):
 
         if convo_type == ConvoType.RAW:
             self._db = DeepLake(
-                dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_raw_messages_HF_v2",
+                dataset_path=os.path.join(VECSTORE_DIR, DEEPLAKE_RAW_PATH),
                 read_only=True,
                 embedding_function=embeddings,
             )
         elif convo_type == ConvoType.SUMMARY:
             self._db = DeepLake(
-                dataset_path=f"{VECSTORE_DIR}DeepLake_VectorStore_413_419_summaries_HF_v2",
+                dataset_path=os.path.join(VECSTORE_DIR, DEEPLAKE_SUMMARY_PATH),
                 read_only=True,
                 embedding_function=embeddings,
             )
