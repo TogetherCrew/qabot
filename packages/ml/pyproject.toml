@@ -29,6 +29,7 @@ asgi-correlation-id = "^4.2.0"
 ray = { extras = ["serve"], version = "^2.5.1" }
 pymongo = "^4.3.3"
 backoff = "^2.2.1"
+tc-messagebroker = "^1.5.1"
 
 
 [tool.poetry.dev-dependencies]
