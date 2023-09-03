@@ -4,7 +4,7 @@
 
 import openai
 import tiktoken
-from call_GPT import call_GPT, split_prompt_tokens
+from .call_GPT import call_GPT, split_prompt_tokens
 
 
 def summarize_text(text_input, OA_key, include_identifier, text_type, gpt_command="Make a one paragraph summary in english of the most important points from this "):

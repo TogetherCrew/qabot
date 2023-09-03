@@ -1,9 +1,8 @@
 import gc
 import os
-import time
 import traceback
 
-import ray
+from utils.constants import DB_CONNECTION_STR, DB_GUILD, OPENAI_API_KEY
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import torch
@@ -37,7 +36,6 @@ else:
     from login import User, get_current_user, router as loginRouter
 
     import logging
-
 
     logging.basicConfig(level=logging.INFO)
 
@@ -211,27 +209,29 @@ else:
         print(f'{request.client.host}:{request.client.port}')
         qabot_logger.debug(f'address:{current_user.address} ip:{request.client.host}:{request.client.port}')
         # get ip from request
-        # if await current_user.stake_balance() < Web3.to_wei(5000, "ether"):
-        #     # raise ValueError("Not enough stake balance, need at least 5000 BOT tokens")
-        #     raise HTTPException(
-        #         status_code=status.HTTP_404_NOT_FOUND,
-        #         detail="Not enough stake balance, need at least 5000 BOT tokens",
-        #     )
 
         ar = AsyncResponse(background_tasks=background_tasks)
         return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question, current_user)))
+
+
+    @app.get("/update/")
+    def vectorstore_update(request: Request, background_tasks: BackgroundTasks) -> Response:
+        qabot_logger.info("vectorstore_update:")
+        session = f"{request.headers['x-request-id']}"
+        qabot_logger.debug(f'session: {session} | ip:{request.client.host}:{request.client.port}')
+
+        def run_update():
+            from vectorstore import vector_store_data
+
+            vector_store_data.main([OPENAI_API_KEY,DB_CONNECTION_STR, DB_GUILD])
+
+        background_tasks.add_task(run_update)
+        return Response(content="ok")
 
     @app.on_event("startup")
     async def startup():
         configure_logging()
         print("Server Startup!")
-        # try:
-            # await call_contract_stake()
-            # # await charge_stake(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",amount_in_ethers=100)
-            # # await staked_balance_for(address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
-        # except Exception as e:
-        #     print("Error calling contract:", e)
-        #     print("Probably RPC node it's down")
 
     @app.on_event("shutdown")
     async def shutdown():

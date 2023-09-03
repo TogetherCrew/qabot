@@ -39,10 +39,14 @@ python ./src/main.py
 poetry run python src/main.py
 ```
 
-1. To run in API mode
+## In API Mode
 
 ```bash
 python ./src/api.py
+```
+
+```bash
+poetry run python src/api.py
 ```
 
 After in webapp folder
@@ -58,6 +62,11 @@ or
 yarn install
 yarn dev
 ```
+
+## Tests
+
+- [Ask using Token Generation](packages/ml/src/tests/ray_remote_test.py)
+- [Update Database Locally](packages/ml/src/tests/update_db_test.py)
 
 ## 🚀 Planned Features
 

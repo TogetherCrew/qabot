@@ -1,5 +1,8 @@
+import datetime
+
 from numpy import zeros, squeeze
 from pymongo import MongoClient
+from datetime import datetime
 
 class DB_access:
    def __init__(self, db_name, connection_string) -> None:
@@ -292,7 +295,14 @@ class Query():
 
         datetime_query = []
         for date in dates:
-            datetime_query.append({date_key: {'$regex': date}})
+            # datetime_query.append({date_key: {'$regex': date}})
+            # date_start = datetime.strptime(date, '%Y-%m-%d')
+            # date_end = date_start.replace(hour=23, minute=59, second=59)
+            # datetime_query.append({date_key: {"$gte": date_start, "$lt": date_end}})
+
+            datetime_query.append({date_key: {"$gte":  f'ISODate("{date}T00:00:00Z")',
+                    "$lt": f'ISODate("{date}T23:59:59Z")'}})
+
 
         query = {
             '$and': [
