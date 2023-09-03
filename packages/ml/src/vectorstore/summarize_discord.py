@@ -2,7 +2,7 @@
 
 # # # # # import libraries # # # # #
 
-from summarize_text import summarize_text
+from .summarize_text import summarize_text
 
 
 def summarize_discord_main(mess_dict_all, OA_key, summarize_channel, summarize_server):

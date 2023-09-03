@@ -1,4 +1,5 @@
 # import the necessary libraries
+from datetime import datetime, timedelta
 import openai
 import sys
 import json
@@ -9,22 +10,30 @@ from langchain.schema import Document
 from langchain.embeddings import HuggingFaceEmbeddings
 from sentence_transformers import SentenceTransformer
 
-import DB_interactions
-from summarize_discord import summarize_discord_main
+from . import DB_interactions
+from .summarize_discord import summarize_discord_main
 
 
 def main(args):
 
     # # SET PARAMETERS
+    if args is None:
+        raise ValueError("No arguments passed to main function.")
 
     # set openai key
-    OA_KEY = ""
+    OA_KEY = args[0]
 
     # set db information
-    DB_CONNECTION_STR = ""
-    DB_GUILD = ""
-    CHANNELS_ID = [""]
-    DATES = ['2023-04-13', '2023-04-14', '2023-04-15', '2023-04-16', '2023-04-17', '2023-04-18', '2023-04-19']
+    DB_CONNECTION_STR = args[1]
+    DB_GUILD = args[2]
+
+    CHANNELS_ID = ["968110585264898048", "1047205126709969007", "1047205182871707669", "1047390883215052880",
+                "1095278496147849257"]
+    DATES = ['2023-07-01', '2023-07-02', '2023-07-03', '2023-07-04', '2023-07-05']
+
+
+    # CHANNELS_ID = [""]
+    # DATES = ['2023-04-13', '2023-04-14', '2023-04-15', '2023-04-16', '2023-04-17', '2023-04-18', '2023-04-19']
 
     # set paths to store results
     RAW_DB_SAVE_PATH = "DeepLake_VectorStore_413_419_raw_messages_HF_v2"
@@ -56,16 +65,20 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     db_access = DB_interactions.DB_access(DB_GUILD, DB_CONNECTION_STR)
     query = DB_interactions.Query()
 
+    # CHANNELS_ID = list(filter(lambda x: x != "", CHANNELS_ID))
+
+    query_channels = {"channelId": {"$in": list(CHANNELS_ID)}} if len(CHANNELS_ID) > 0 else {}
     # obtain relations between channel id and name
     cursor = db_access.query_db_find(
         table="channels",
         feature_projection={"__v": 0, "_id": 0, "last_update": 0},
-        query={"channelId": {"$in": list(CHANNELS_ID)}}
+        query=query_channels
     )
 
     # store relations between channel id and name as dictionary
-    channel_id_name = DB_interactions.filter_channel_name_id(list(cursor))
+    channel_id_name = DB_interactions.filter_channel_name_id(list(cursor), channel_name_key="name")
 
+    # CHANNELS_ID = list(channel_id_name.keys())
     # initiate empty doc arrays
     summary_docs = []
     raw_docs = []
@@ -78,12 +91,18 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     # for each date
     for date in DATES:
 
+        print(date)
+
+        # compute date before day
+        datetime_next_day = datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)
+        date_next_day = datetime_next_day.strftime('%Y-%m-%d')
+
         ########## And now querying the table with messages in it ##########
         query_dict = query.create_query_threads(
             channels_id=CHANNELS_ID,
-            dates=[date],
+            date_range=[date, date_next_day],
             channelsId_key='channelId',
-            date_key='datetime'
+            date_key='createdDate'
         )
 
         projection = {
@@ -97,17 +116,21 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
         }
 
         cursor = db_access.query_db_find(table='rawinfos',
-                                         query=query_dict,
-                                         feature_projection=projection,
-                                         sorting=('datetime', 1)
-                                         )
+                                        query=query_dict,
+                                        feature_projection=projection,
+                                        sorting=('datetime', -1)
+                                        )
 
-        # getting a result as `thread_results : {str:{str:{str:str}}}`
+        # getting a result as thread_results : {str:{str:{str:str}}}
         thread_results = DB_interactions.filter_channel_thread(cursor_list=list(cursor),
-                                               channels_id=CHANNELS_ID,
-                                               thread_id_key='thread',
-                                               author_key='author',
-                                               message_content_key='content')
+                                            channels_id=CHANNELS_ID,
+                                            thread_id_key='threadId',
+                                            author_key='author',
+                                            message_content_key='content')
+
+        print("\n\n")
+        print(thread_results)
+        print("\n\n")
 
         # run the summarizing function
         summary_out, num_tokens = summarize_discord_main(thread_results, OA_KEY, True, True)
