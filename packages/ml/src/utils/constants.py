@@ -21,6 +21,14 @@ GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "")
 assert GOOGLE_CSE_ID, "GOOGLE_CSE_ID environment variable is missing from .env"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
+
+#MongoDB
+DB_CONNECTION_STR = os.getenv("DB_CONNECTION_STR", "")
+assert DB_CONNECTION_STR, "DB_CONNECTION_STR environment variable is missing from .env"
+DB_GUILD = os.getenv("DB_GUILD", "")
+assert DB_GUILD, "DB_GUILD environment variable is missing from .env"
+
+
 # Set Agent Settings
 AGENT_NAME = os.getenv("AGENT_NAME", "")
 assert AGENT_NAME, "AGENT_NAME variable is missing from .env"
