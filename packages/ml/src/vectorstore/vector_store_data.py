@@ -36,9 +36,9 @@ def main(args):
     # DATES = ['2023-04-13', '2023-04-14', '2023-04-15', '2023-04-16', '2023-04-17', '2023-04-18', '2023-04-19']
 
     # set paths to store results
-    RAW_DB_SAVE_PATH = "DeepLake_VectorStore_413_419_raw_messages_HF_v2"
-    SUM_DB_SAVE_PATH = "DeepLake_VectorStore_413_419_summaries_HF_v2"
-    METADATA_OPTIONS_SAVE_PATH = "metadata_options.json"
+    RAW_DB_SAVE_PATH = "vector_store/1-DeepLake_VectorStore_413_419_raw_messages_HF_v2"
+    SUM_DB_SAVE_PATH = "vector_store/1-DeepLake_VectorStore_413_419_summaries_HF_v2"
+    METADATA_OPTIONS_SAVE_PATH = "vector_store/metadata_options.json"
 
 
     # # initiate embeddings model
