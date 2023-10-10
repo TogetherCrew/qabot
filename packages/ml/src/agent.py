@@ -70,6 +70,7 @@ class Agent(BaseModel):
         super().__init__(**data)
 
         self.task_manager = TaskManager(llm=self.llm)
+
         self.episodic_memory = EpisodicMemory(llm=self.llm, ui=self.ui)
         self.semantic_memory = SemanticMemory(llm=self.llm, openaichat=self.openaichat, ui=self.ui)
 
@@ -581,30 +582,30 @@ class Agent(BaseModel):
             self.name = agent_data["name"]
             self.role = agent_data["role"]
 
-            try:
-                self.semantic_memory.load_local(agent_data["semantic_memory"])
-            except Exception as e:
-                # await self.ui.notify(
-                #     "ERROR", "Semantic memory data is corrupted.", title_color="red"
-                # )
-                print("ERROR", "Semantic memory data is corrupted.")
-                raise e
-            else:
-                # await self.ui.notify(
-                #     "INFO", "Semantic memory data is loaded.", title_color="GREEN"
-                # )
-                print("INFO", "Semantic memory data is loaded.")
+            # try:
+            #     self.semantic_memory.load_local(agent_data["semantic_memory"])
+            # except Exception as e:
+            #     # await self.ui.notify(
+            #     #     "ERROR", "Semantic memory data is corrupted.", title_color="red"
+            #     # )
+            #     print("ERROR", "Semantic memory data is corrupted.")
+            #     raise e
+            # else:
+            #     # await self.ui.notify(
+            #     #     "INFO", "Semantic memory data is loaded.", title_color="GREEN"
+            #     # )
+            #     print("INFO", "Semantic memory data is loaded.")
 
-            try:
-                self.episodic_memory.load_local(agent_data["episodic_memory"])
-            except Exception as e:
-                # await self.ui.notify(
-                #     "ERROR", "Episodic memory data is corrupted.", title_color="RED"
-                # )
-                print("ERROR", "Episodic memory data is corrupted.")
-                raise e
-            else:
-                # await self.ui.notify(
-                #     "INFO", "Episodic memory data is loaded.", title_color="GREEN"
-                # )
-                print("INFO", "Episodic memory data is loaded.")
+            # try:
+            #     self.episodic_memory.load_local(agent_data["episodic_memory"])
+            # except Exception as e:
+            #     # await self.ui.notify(
+            #     #     "ERROR", "Episodic memory data is corrupted.", title_color="RED"
+            #     # )
+            #     print("ERROR", "Episodic memory data is corrupted.")
+            #     raise e
+            # else:
+            #     # await self.ui.notify(
+            #     #     "INFO", "Episodic memory data is loaded.", title_color="GREEN"
+            #     # )
+            #     print("INFO", "Episodic memory data is loaded.")

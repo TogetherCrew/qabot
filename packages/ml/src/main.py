@@ -3,7 +3,6 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import asyncio
 
-from sentence_transformers import SentenceTransformer
 
 from utils.util import timeit
 from utils.constants import DEFAULT_EMBEDDINGS, AGENT_NAME, AGENT_ROLE, AGENT_OBJECTIVE, OPENAI_API_KEY, \

@@ -1,15 +1,12 @@
 # import the necessary libraries
 from datetime import datetime, timedelta
-import openai
 import sys
 import json
-import pickle
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import DeepLake
 from langchain.schema import Document
-from langchain.embeddings import HuggingFaceEmbeddings
-from sentence_transformers import SentenceTransformer
+from langchain.embeddings import OpenAIEmbeddings
 
+from tasks.helper import set_status
 from . import DB_interactions
 from .summarize_discord import summarize_discord_main
 
@@ -26,6 +23,8 @@ def main(args):
     # set db information
     DB_CONNECTION_STR = args[1]
     DB_GUILD = args[2]
+
+    task = args[3]
 
     CHANNELS_ID = ["968110585264898048", "1047205126709969007", "1047205182871707669", "1047390883215052880",
                 "1095278496147849257"]
@@ -44,22 +43,25 @@ def main(args):
     # # initiate embeddings model
 
     # # OpenAI embedding model
-    # embeddings = OpenAIEmbeddings(openai_api_key=OA_KEY)
+    embeddings = OpenAIEmbeddings(openai_api_key=OA_KEY)
 
+    set_status(task,state='A',meta={'current':'HF start'})
     # HuggingFace embeddings model
-    model_name = "sentence-transformers/all-mpnet-base-v2"
-    embeddings = HuggingFaceEmbeddings(model_name=model_name,client=SentenceTransformer(device='cpu'))
+    # model_name = "sentence-transformers/all-mpnet-base-v2"
+    # embeddings = HuggingFaceEmbeddings(model_name=model_name,client=SentenceTransformer(device='cpu'))
 
+    set_status(task,state='B', meta={'current':'HF end'})
     # embed and store data
     vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings,
-                         RAW_DB_SAVE_PATH, SUM_DB_SAVE_PATH, METADATA_OPTIONS_SAVE_PATH)
+                         RAW_DB_SAVE_PATH, SUM_DB_SAVE_PATH, METADATA_OPTIONS_SAVE_PATH, task)
 
     return
 
 # # #
 
 def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings,
-                         RAW_DB_SAVE_PATH, SUM_DB_SAVE_PATH, METADATA_OPTIONS_SAVE_PATH):
+                         RAW_DB_SAVE_PATH, SUM_DB_SAVE_PATH, METADATA_OPTIONS_SAVE_PATH, task):
+
 
     # set up database access
     db_access = DB_interactions.DB_access(DB_GUILD, DB_CONNECTION_STR)
@@ -68,6 +70,7 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     # CHANNELS_ID = list(filter(lambda x: x != "", CHANNELS_ID))
 
     query_channels = {"channelId": {"$in": list(CHANNELS_ID)}} if len(CHANNELS_ID) > 0 else {}
+    set_status(task,state='C',meta={'current':'MongoDB query'})
     # obtain relations between channel id and name
     cursor = db_access.query_db_find(
         table="channels",
@@ -88,6 +91,8 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     all_threads = []
     all_authors = []
 
+    set_status(task,state='D',meta={'current':'Data transforming'})
+
     # for each date
     for date in DATES:
 
@@ -97,6 +102,7 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
         datetime_next_day = datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)
         date_next_day = datetime_next_day.strftime('%Y-%m-%d')
 
+        set_status(task,state='E',meta={'current':'Data query'})
         ########## And now querying the table with messages in it ##########
         query_dict = query.create_query_threads(
             channels_id=CHANNELS_ID,
@@ -123,18 +129,20 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
 
         # getting a result as thread_results : {str:{str:{str:str}}}
         thread_results = DB_interactions.filter_channel_thread(cursor_list=list(cursor),
-                                            channels_id=CHANNELS_ID,
-                                            thread_id_key='threadId',
-                                            author_key='author',
-                                            message_content_key='content')
+                                                               channels_id=CHANNELS_ID,
+                                                               thread_id_key='threadId',
+                                                               author_key='author',
+                                                               message_content_key='content')
 
         print("\n\n")
         print(thread_results)
         print("\n\n")
 
+        set_status(task,state='F',meta={'current':'Summarizing'})
         # run the summarizing function
         summary_out, num_tokens = summarize_discord_main(thread_results, OA_KEY, True, True)
 
+        set_status(task,state='G',meta={'current':'Building Summarize'})
         # add server summary to docs
         summary_docs.append(Document(page_content=summary_out['server_summary']["whole server"],
          metadata={
@@ -204,9 +212,12 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
                             all_authors.append(handle_split[0])
 
 
+    set_status(task,state='H',meta={'current':'Building DeepLake'})
     # store results in vector stores
     db_raw = DeepLake.from_documents(raw_docs, embeddings, dataset_path=RAW_DB_SAVE_PATH)
     db_summary = DeepLake.from_documents(summary_docs, embeddings, dataset_path=SUM_DB_SAVE_PATH)
+
+    set_status(task,state='I',meta={'current':'Start write to file'})
 
     # store metadata options for vector stores
     JSON_dict = {"all_channels":all_channels, "all_threads":all_threads, "all_authors":all_authors, "all_dates":DATES}
@@ -214,6 +225,7 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     with open(METADATA_OPTIONS_SAVE_PATH, "w") as outfile:
         json.dump(JSON_dict, outfile)
 
+    set_status(task,state='J', meta={'current':'END'})
     return
 
 if __name__ == '__main__':

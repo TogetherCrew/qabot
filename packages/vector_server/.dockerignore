@@ -1,0 +1,13 @@
+*.env
+tasks/tasks.env
+coverage/*
+.pytest_cache
+__pycache__
+pdm.Dockerfile
+poetry.Dockerfile
+Dockerfile
+
+.pdm-python
+.pdm-build
+.venv
+vector_store

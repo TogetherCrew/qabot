@@ -2,20 +2,18 @@ import gc
 import os
 import traceback
 
-from textual import on
-
-from tc_messageBroker.rabbit_mq.event import Event
 from tc_messageBroker.rabbit_mq.queue import Queue
 from logger.hivemind_logger import logger
-from server.broker import a_listen, a_publish, publish
+from server.broker import EventBroker
 from utils.constants import DB_CONNECTION_STR, DB_GUILD, OPENAI_API_KEY
 from utils.util import configure_logging
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-import torch
+# import torch
+#
+# dc = torch.cuda.device_count()
+# print('torch.cuda.device_count:', dc)
 
-dc = torch.cuda.device_count()
-print('torch.cuda.device_count:', dc)
 if __name__ == "__main__":
     import uvicorn
 
@@ -25,7 +23,7 @@ else:
     import asyncio
     from typing import Annotated, AsyncGenerator, Any
     from asgi_correlation_id import CorrelationIdMiddleware
-    from fastapi import BackgroundTasks, Depends, FastAPI, Request
+    from fastapi import  Depends, FastAPI, Request
     from fastapi.responses import StreamingResponse
     from fastapi import HTTPException, Request
     from fastapi.exception_handlers import http_exception_handler
@@ -39,11 +37,13 @@ else:
 
     from asgi_correlation_id import correlation_id
 
-    from login import User, get_current_user, router as loginRouter
+    # from login import User, get_current_user, router as loginRouter
+
+    eb = EventBroker()
 
     app = FastAPI()
 
-    app.include_router(loginRouter)
+    # app.include_router(loginRouter)
 
     origins = ["*"]
 
@@ -84,7 +84,8 @@ else:
             from main import load
             return load()
 
-        async def generate_response(self, request: Request, question: str, user: User) -> AsyncGenerator[str, None]:
+        async def generate_response(self, request: Request, question: str) -> AsyncGenerator[str, None]:
+        # async def generate_response(self, request: Request, question: str, user: User) -> AsyncGenerator[str, None]:
             run: asyncio.Task | None = None
             session = ''
             try:
@@ -99,12 +100,14 @@ else:
                     logger.info(response.__dict__)
                     if isinstance(response, TextChunk):
                         res_token = f'{response.token}\n\n'
-                        await a_publish(Queue.DISCORD_ANALYZER, Event.DISCORD_ANALYZER.RUN,
-                                        {
-                                            "uuid": f"s-{session}",
-                                            "question": question,
-                                            "streaming": res_token,
-                                        })
+
+                        # await a_publish(Queue.DISCORD_BOT, Event.DISCORD_BOT.SEND_MESSAGE,
+                        # await eb.a_publish(Queue.DISCORD_BOT, "SEND_MESSAGE",
+                        #                 {
+                        #                     "uuid": f"s-{session}",
+                        #                     "question": question,
+                        #                     "streaming": res_token,
+                        #                 })
                         yield res_token
                     elif isinstance(response, InfoChunk):
                         self.total_tokens += response.count_tokens
@@ -125,11 +128,11 @@ else:
             finally:
 
                 logger.info(f'Total tokens used: {self.total_tokens}')
-                await a_publish(Queue.DISCORD_ANALYZER, Event.DISCORD_ANALYZER.RUN,
-                                {"uuid": f"s-{session}",
-                                 "question": question,
-                                 "user": user.json(),
-                                 "total_tokens": self.total_tokens})
+                # await eb.a_publish(Queue.DISCORD_BOT, "SEND_MESSAGE",
+                #                 {"uuid": f"s-{session}",
+                #                  "question": question,
+                #                  "user": user.json(),
+                #                  "total_tokens": self.total_tokens})
 
                 if run:
                     run.cancel()
@@ -150,57 +153,41 @@ else:
 
 
     @app.post("/ask/")
-    async def ask(request: Request, body: Ask, current_user: Annotated[User, Depends(get_current_user)]) -> StreamingResponse:
+    async def ask(request: Request, body: Ask) -> StreamingResponse:
 
         logger.info(f"Received question:{body.question}")
         session = f"{request.headers['x-request-id']}"
         logger.debug(
-            f'session: {session} address:{current_user.address} ip:{request.client.host}:{request.client.port}')
+            f'session: {session} ip:{request.client.host}:{request.client.port}')
 
-        await a_publish(Queue.DISCORD_ANALYZER, Event.DISCORD_ANALYZER.RUN,
-                        {
-                            "uuid": f"s-{session}",
-                            "question": body.question,
-                            "user": current_user.json(),
-                        })
+        # await eb.a_publish(Queue.DISCORD_BOT, "SEND_MESSAGE",
+        #                 {
+        #                     "uuid": f"s-{session}",
+        #                     "question": body.question,
+        #                     "user": current_user.json(),
+        #                 })
 
         ar = AsyncResponse()
-        return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question, current_user)))
-
-
-    @app.get("/update/")
-    def vectorstore_update(request: Request, background_tasks: BackgroundTasks) -> Response:
-        logger.info("vectorstore_update:")
-
-        publish(Queue.DISCORD_ANALYZER, Event.DISCORD_ANALYZER.RUN,
-                {"uuid": "2334-fsdd-534-r342sd-5433", "data": '/update'})
-
-        session = f"{request.headers['x-request-id']}"
-        logger.debug(f'session: {session} | ip:{request.client.host}:{request.client.port}')
-
-        def run_update():
-            from vectorstore import vector_store_data
-
-            vector_store_data.main([OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD])
-
-        background_tasks.add_task(run_update)
-        return Response(content="ok")
+        return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question)))
 
 
     def on_event(message: dict[str, Any]) -> None:
         logger.info("on_event %s", message)
-        if message['event'] == Event.DISCORD_ANALYZER.RUN:
+        if message['event'] == "SEND_MESSAGE":
             logger.info("on_event %s", message['event'])
+        elif message['event'] == "UPDATED_STORE":
+            logger.info("UPDATED_STORE %s", message)
         else:
             logger.info("Event not registered: %s", message['event'])
-
 
 
     @app.on_event("startup")
     async def startup():
         configure_logging()
-
-        await a_listen(Queue.DISCORD_ANALYZER, Event.DISCORD_ANALYZER.RUN, on_event)
+        eb.connect()
+        # Queue.HIVEMIND_API, Event.HIVEMIND_API.RECEIVED_MESSAGE
+        await eb.a_listen("HIVEMIND_API", "RECEIVED_MESSAGE", on_event)
+        await eb.a_listen("HIVEMIND_API", "UPDATED_STORE", on_event)
 
         print("Server Startup!")
 

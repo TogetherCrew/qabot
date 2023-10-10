@@ -1,6 +1,5 @@
 import os
 
-from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from langchain.schema import Document
 from langchain.vectorstores import DeepLake
