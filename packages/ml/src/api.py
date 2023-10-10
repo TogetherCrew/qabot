@@ -171,23 +171,24 @@ else:
         return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question)))
 
 
-    def on_event(message: dict[str, Any]) -> None:
-        logger.info("on_event %s", message)
-        if message['event'] == "SEND_MESSAGE":
-            logger.info("on_event %s", message['event'])
-        elif message['event'] == "UPDATED_STORE":
-            logger.info("UPDATED_STORE %s", message)
-        else:
-            logger.info("Event not registered: %s", message['event'])
+    # def on_event(message: dict[str, Any]) -> None:
+    #     logger.info("on_event %s", message)
+    #     if message['event'] == "SEND_MESSAGE":
+    #         logger.info("on_event %s", message['event'])
+    #     elif message['event'] == "UPDATED_STORE":
+    #         logger.info("UPDATED_STORE %s", message)
+    #     else:
+    #         logger.info("Event not registered: %s", message['event'])
 
 
     @app.on_event("startup")
     async def startup():
         configure_logging()
-        eb.connect()
+        # eb.connect()
         # Queue.HIVEMIND_API, Event.HIVEMIND_API.RECEIVED_MESSAGE
-        await eb.a_listen("HIVEMIND_API", "RECEIVED_MESSAGE", on_event)
-        await eb.a_listen("HIVEMIND_API", "UPDATED_STORE", on_event)
+        # eb.t_listen("HIVEMIND_API", "RECEIVED_MESSAGE", on_event)
+        eb.t_listen("HIVEMIND_API", "RUN", lambda msg : logger.info(f"msg:{msg}"))
+        eb.t_listen("HIVEMIND_API", "UPDATED_STORE", lambda msg : logger.info(f"msg:{msg}"))
 
         print("Server Startup!")
 
