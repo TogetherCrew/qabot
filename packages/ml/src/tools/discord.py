@@ -17,7 +17,7 @@ class ConversationType(Enum):
     SUMMARY = "summary"
 
 
-VECSTORE_DIR = os.path.join(os.path.dirname(__file__), "../_vector_store/")
+# VECSTORE_DIR = os.path.join(os.path.dirname(__file__), "../_vector_store/")
 
 
 class DiscordTool(AgentTool):
