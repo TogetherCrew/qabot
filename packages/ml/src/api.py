@@ -3,9 +3,9 @@ import os
 import traceback
 
 from tc_messageBroker.rabbit_mq.queue import Queue
+from tc_messageBroker.rabbit_mq.event import Event
 from logger.hivemind_logger import logger
-from server.broker import EventBroker
-from utils.constants import DB_CONNECTION_STR, DB_GUILD, OPENAI_API_KEY
+from server.async_broker import AsyncBroker
 from utils.util import configure_logging
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -21,9 +21,9 @@ if __name__ == "__main__":
 else:
 
     import asyncio
-    from typing import Annotated, AsyncGenerator, Any
+    from typing import AsyncGenerator
     from asgi_correlation_id import CorrelationIdMiddleware
-    from fastapi import  Depends, FastAPI, Request
+    from fastapi import FastAPI, Request
     from fastapi.responses import StreamingResponse
     from fastapi import HTTPException, Request
     from fastapi.exception_handlers import http_exception_handler
@@ -38,8 +38,6 @@ else:
     from asgi_correlation_id import correlation_id
 
     # from login import User, get_current_user, router as loginRouter
-
-    eb = EventBroker()
 
     app = FastAPI()
 
@@ -85,7 +83,7 @@ else:
             return load()
 
         async def generate_response(self, request: Request, question: str) -> AsyncGenerator[str, None]:
-        # async def generate_response(self, request: Request, question: str, user: User) -> AsyncGenerator[str, None]:
+            # async def generate_response(self, request: Request, question: str, user: User) -> AsyncGenerator[str, None]:
             run: asyncio.Task | None = None
             session = ''
             try:
@@ -94,7 +92,6 @@ else:
                 agent = AsyncResponse.get_agent()
                 run = asyncio.create_task(agent.run(question, self.callback_handler))
                 logger.info('Running...')
-                print("Running")
                 async for response in self.callback_handler.aiter():
                     # check token type
                     logger.info(response.__dict__)
@@ -180,19 +177,62 @@ else:
     #     else:
     #         logger.info("Event not registered: %s", message['event'])
 
+    # def log_event(msg):
+    #     logger.info(f"queue: {EventBroker.get_queue_by_event(msg['event'])} msg:{msg}")
+
+    def log_event(msg: str, queue_name: str, event_name: str):
+        logger.info(f"{queue_name}->{event_name}::{msg}")
+
+
+    ab = AsyncBroker()
+
 
     @app.on_event("startup")
     async def startup():
         configure_logging()
-        # eb.connect()
-        # Queue.HIVEMIND_API, Event.HIVEMIND_API.RECEIVED_MESSAGE
-        # eb.t_listen("HIVEMIND_API", "RECEIVED_MESSAGE", on_event)
-        eb.t_listen("HIVEMIND_API", "RUN", lambda msg : logger.info(f"msg:{msg}"))
-        eb.t_listen("HIVEMIND_API", "UPDATED_STORE", lambda msg : logger.info(f"msg:{msg}"))
+
+        await ab.connect()
+        loop = asyncio.get_event_loop()
+        loop.set_debug(True)
+        logger.info(loop)
+
+        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
+                                                       event_name=Event.DISCORD_ANALYZER.RUN,
+                                                       callback=log_event
+                                                       ))
+
+        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
+                                                       event_name=Event.DISCORD_ANALYZER.RUN_ONCE,
+                                                       callback=log_event
+                                                       ))
+
+        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
+                                                       event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
+                                                       callback=log_event
+                                                       ))
+        # test_broker_main()
+        #
+        # eb = EventBroker()
+        # eb.t_listen(Queue.HIVEMIND)
+        # eb.add_event(Event.HIVEMIND.GUILD_MESSAGES_UPDATED, log_event)
+        # # eb.add_event(Event.HIVEMIND.INTERACTION_CREATED, log_event)
+        #
+        # eb2 = EventBroker()
+        # eb2.t_listen(Queue.TWITTER_BOT)
+        # eb2.add_event(Event.TWITTER_BOT.SEND_MESSAGE, log_event)
+        # #
+        # eb3 = EventBroker()
+        # eb3.t_listen(Queue.DISCORD_ANALYZER)
+        # eb3.add_event(Event.DISCORD_ANALYZER.RUN, log_event)
+        # eb3.add_event(Event.DISCORD_ANALYZER.RUN_ONCE, log_event)
+
+        # logger.info(f"QueueObj.DISCORD_ANALYZER.event.RUN: {QueueObj.DISCORD_ANALYZER.event.RUN}")
 
         print("Server Startup!")
 
 
     @app.on_event("shutdown")
     async def shutdown():
+        if ab:
+            await ab.connection.close()
         print("Server Shutdown!")
