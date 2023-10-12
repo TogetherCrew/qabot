@@ -55,7 +55,7 @@ class EpisodicMemory(BaseModel):
     #     filename = base58.b58encode(question.encode()).decode()
     #     if self.vector_store is None:
             # self.vector_store = DeepLake(read_only=True, dataset_path=os.path.join(EPISODIC_MEMORY_DIR, f"{filename}"),
-            #                              embedding_function=self.embeddings)
+            #                              embedding=self.embeddings)
 
     def __del__(self):
         del self.embeddings
@@ -147,7 +147,7 @@ class EpisodicMemory(BaseModel):
         ]
         if self.vector_store is None:
             print('build deeplake')
-        #     self.vector_store = DeepLake(read_only=False, dataset_path=EPISODIC_MEMORY_DIR,embedding_function=self.embeddings)
+        #     self.vector_store = DeepLake(read_only=False, dataset_path=EPISODIC_MEMORY_DIR,embedding=self.embeddings)
             self.vector_store = FAISS.from_texts(
                 texts=texts, embedding=self.embeddings, metadatas=metadatas
             )
@@ -171,7 +171,7 @@ class EpisodicMemory(BaseModel):
         #     self.vector_store = FAISS.load_local(
         #         folder_path=path, embeddings=self.embeddings
         #     )
-        # self.vector_store = DeepLake(read_only=False, dataset_path=path,embedding_function=self.embeddings)
+        # self.vector_store = DeepLake(read_only=False, dataset_path=path,embedding=self.embeddings)
         # await asyncio.create_task(_load())
         # await asyncio.to_thread(FAISS.load_local, folder_path=path, embeddings=self.embeddings)
             

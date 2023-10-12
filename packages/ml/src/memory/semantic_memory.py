@@ -7,7 +7,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
 from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from llm.extract_entity.prompt import get_chat_template
 from llm.extract_entity.schema import JsonSchema as ENTITY_EXTRACTION_SCHEMA
@@ -26,7 +26,7 @@ class SemanticMemory(BaseModel):
     openaichat: Optional[ChatOpenAI] = Field(
         None, description="ChatOpenAI class for the agent"
     )
-    embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS,
+    embeddings: OpenAIEmbeddings = Field(DEFAULT_EMBEDDINGS,
                                               title="Embeddings to use for tool retrieval",
                                               )
     vector_store: FAISS = Field(
@@ -42,7 +42,7 @@ class SemanticMemory(BaseModel):
         # filename = base58.b58encode(question.encode()).decode()
         # if self.vector_store is None:
             # self.vector_store = DeepLake(read_only=True, dataset_path=os.path.join(SEMANTIC_MEMORY_DIR, f"{filename}"),
-            #                              embedding_function=self.embeddings)
+            #                              embedding=self.embeddings)
 
     def __del__(self):
         del self.embeddings
@@ -93,8 +93,8 @@ class SemanticMemory(BaseModel):
     @timeit
     def remember_related_knowledge(self, query: str, k: int = 5) -> dict:
         """Remember relevant knowledge for a query."""
-        # if self.vector_store is None:
-        #     return {}
+        if self.vector_store is None:
+            return {}
         relevant_documents = self.vector_store.similarity_search(query, k=k)
         return {
             d.metadata["entity"]: d.metadata["description"] for d in relevant_documents
@@ -111,9 +111,10 @@ class SemanticMemory(BaseModel):
             metadata_list.append({"entity": entity, "description": description})
 
         if self.vector_store is None:
-            self.vector_store = FAISS.from_texts(texts=description_list,metadatas=metadata_list)
+            self.vector_store = FAISS.from_texts(texts=description_list,metadatas=metadata_list,
+                                                 embedding=self.embeddings)
             # self.vector_store = DeepLake(read_only=False, dataset_path=SEMANTIC_MEMORY_DIR,
-            #                              embedding_function=self.embeddings)
+            #                              embedding=self.embeddings)
 
         self.vector_store.add_texts(texts=description_list, metadatas=metadata_list)
 
@@ -134,4 +135,4 @@ class SemanticMemory(BaseModel):
     #     #     )
     #
     #     # await asyncio.create_task(_load())
-    #     self.vector_store = DeepLake(read_only=True, dataset_path=path, embedding_function=self.embeddings)
+    #     self.vector_store = DeepLake(read_only=True, dataset_path=path, embedding=self.embeddings)

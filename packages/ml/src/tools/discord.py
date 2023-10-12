@@ -9,14 +9,15 @@ from langchain.schema import Document
 
 from tools.base import AgentTool
 from utils.constants import DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH
+from utils.util import async_post_request
 
 
-class ConvoType(Enum):
+class ConversationType(Enum):
     RAW = "raw"
     SUMMARY = "summary"
 
 
-VECSTORE_DIR = os.path.join(os.path.dirname(__file__), "../vector_store/")
+VECSTORE_DIR = os.path.join(os.path.dirname(__file__), "../_vector_store/")
 
 
 class DiscordTool(AgentTool):
@@ -27,7 +28,7 @@ class DiscordTool(AgentTool):
     def __init__(
         self,
         name: str,
-        convo_type: ConvoType,
+        convo_type: ConversationType,
         description: str,
         embeddings: Embeddings,
         user_permission_required: bool = False,
@@ -35,29 +36,27 @@ class DiscordTool(AgentTool):
     ):
         super().__init__(
             name=name,
-            func=self.convo_raw,
+            func=self.a_conversation_search_server,
             description=description,
             user_permission_required=user_permission_required,
             **kwargs,
         )
 
-        if convo_type == ConvoType.RAW:
-            self._db = DeepLake(
-                dataset_path=os.path.join(VECSTORE_DIR, DEEPLAKE_RAW_PATH),
-                read_only=True,
-                embedding_function=embeddings,
-            )
-        elif convo_type == ConvoType.SUMMARY:
-            self._db = DeepLake(
-                dataset_path=os.path.join(VECSTORE_DIR, DEEPLAKE_SUMMARY_PATH),
-                read_only=True,
-                embedding_function=embeddings,
-            )
+        # self._db = DeepLake(
+        #     dataset_path=os.path.join(VECSTORE_DIR, DEEPLAKE_RAW_PATH if convo_type == ConversationType.RAW else DEEPLAKE_SUMMARY_PATH),
+        #     read_only=True,
+        #     embedding=embeddings,
+        # )
 
     # metadata:{"date": "2023-05-01", "channel": "back_end", "thread": "123", "author": "n", "index": "1"}
 
     # def convo_raw(self, query: str, filter: Optional[Dict[str, str]]) -> str:
-    def convo_raw(self, query: str) -> str:
+    async def a_conversation_search_server(self, query: str) -> str:
+        json_response = await async_post_request('http://localhost:3333/ask', {
+                                                    'question': 'Who is Amin?'
+                                                })
+    def conversation_search(self, query: str) -> str:
+
         list_doc = self._db.similarity_search(query=query, k=5)
 
         new_list_doc = [

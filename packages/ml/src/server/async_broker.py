@@ -8,7 +8,7 @@ from tc_messageBroker.rabbit_mq.event import Event
 from tc_messageBroker.rabbit_mq.queue import Queue
 
 from logger.hivemind_logger import logger
-
+import utils.constants as constants
 
 class AsyncBrokerQueue:
     def __init__(self, queue_name="HIVEMIND_API"):
@@ -74,7 +74,9 @@ class AsyncBroker:
         self.queues = {}
 
     async def connect(self):
-        self.connection = await aio_pika.connect_robust("amqp://guest:guest@127.0.0.1/")
+        url = f"amqp://{constants.RABBITMQ_USER}:{constants.RABBITMQ_PASS}@{constants.RABBITMQ_HOST}/"
+        logger.debug(f"Create connection to url: {url}")
+        self.connection = await aio_pika.connect_robust(url=url) # TODO use constants.py
 
     async def listen(self, queue_name="HIVEMIND_API", event_name="RUN", callback=None):
         if queue_name not in self.queues:

@@ -8,6 +8,8 @@ from logger.hivemind_logger import logger
 from server.async_broker import AsyncBroker
 from utils.util import configure_logging
 
+import aiormq
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # import torch
 #
@@ -191,25 +193,29 @@ else:
     async def startup():
         configure_logging()
 
-        await ab.connect()
-        loop = asyncio.get_event_loop()
-        loop.set_debug(True)
-        logger.info(loop)
+        try:
+            await ab.connect()
+            loop = asyncio.get_event_loop()
+            loop.set_debug(True)
+            logger.info(loop)
 
-        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
-                                                       event_name=Event.DISCORD_ANALYZER.RUN,
-                                                       callback=log_event
-                                                       ))
+            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
+                                                           event_name=Event.DISCORD_ANALYZER.RUN,
+                                                           callback=log_event
+                                                           ))
 
-        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
-                                                       event_name=Event.DISCORD_ANALYZER.RUN_ONCE,
-                                                       callback=log_event
-                                                       ))
+            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
+                                                           event_name=Event.DISCORD_ANALYZER.RUN_ONCE,
+                                                           callback=log_event
+                                                           ))
 
-        asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
-                                                       event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
-                                                       callback=log_event
-                                                       ))
+            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
+                                                           event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
+                                                           callback=log_event
+                                                           ))
+        except aiormq.exceptions.AMQPConnectionError as amqp:
+            logger.error(amqp)
+
         # test_broker_main()
         #
         # eb = EventBroker()

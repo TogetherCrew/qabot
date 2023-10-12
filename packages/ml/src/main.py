@@ -10,7 +10,7 @@ from utils.constants import DEFAULT_EMBEDDINGS, AGENT_NAME, AGENT_ROLE, AGENT_OB
 
 # os.environ["LANGCHAIN_HANDLER"] = "langchain"
 
-from tools.discord import ConvoType, DiscordTool
+from tools.discord import ConversationType, DiscordTool
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from ui.cui import CommandlineUserInterface
@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 print('loading main.py')
 convo_tool = DiscordTool(
     name="conversations_raw",
-    convo_type=ConvoType.RAW,
+    convo_type=ConversationType.RAW,
     embeddings=DEFAULT_EMBEDDINGS,
     args={"query": "<Best query possible to get the desired result>"},
     description="With this tool, you can search all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
@@ -34,7 +34,7 @@ convo_tool = DiscordTool(
 
 convo_tool_summary = DiscordTool(
     name="conversations_summary",
-    convo_type=ConvoType.SUMMARY,
+    convo_type=ConversationType.SUMMARY,
     embeddings=DEFAULT_EMBEDDINGS,
     args={"query": "<Best query possible to get the desired result>"},
     description="With this tool, you can search daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",

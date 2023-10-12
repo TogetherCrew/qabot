@@ -1,8 +1,11 @@
+import json
 import time
 from logging.config import dictConfig
 
 from langchain.schema import LLMResult
 from pydantic import BaseModel
+
+import aiohttp
 
 
 class Timeless:
@@ -52,6 +55,7 @@ def timeit(func):
 
     return wrapper
 
+
 def get_total_tokens(llm_result: LLMResult) -> int:
     token_usage = llm_result.llm_output["token_usage"]
     total_tokens = token_usage["total_tokens"]
@@ -61,11 +65,14 @@ def get_total_tokens(llm_result: LLMResult) -> int:
 def create_deeplake():
     pass
 
+
 class Settings(BaseModel):
     ENVIRONMENT: str = 'local'
 
 
 settings = Settings()
+
+
 def configure_logging() -> None:
     dictConfig(
         {
@@ -107,3 +114,8 @@ def configure_logging() -> None:
         }
     )
 
+
+async def async_post_request(url, json):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=json) as response:
+            return await response.json()

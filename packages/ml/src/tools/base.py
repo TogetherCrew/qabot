@@ -4,6 +4,8 @@ import traceback
 from pydantic import Field, Extra, validator, BaseModel
 from typing import Any, Callable, Dict
 
+from logger.hivemind_logger import logger
+
 
 class AgentToolError(Exception):
     pass
@@ -57,7 +59,7 @@ class AgentTool(BaseModel):
 
         return required_args
 
-    @validator("name")
+    @validator("name") # TODO: maybe I shouldn't modify name here, instead throw to inform how to normalize the variable
     def name_to_snake_case(name: str):
         """Convert the name to snake case."""
         if name is None:
