@@ -18,8 +18,10 @@ git clone https://github.com/kamikazebr/qabot.git
 
 3. Install the required dependencies poetry を使って
 
+
 ```bash
-poetry install
+pdm import -f poetry pyproject.toml
+pdm install
 ```
 
 4. Rename `.env.sample` to `.env`

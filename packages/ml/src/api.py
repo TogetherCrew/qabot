@@ -144,7 +144,7 @@ else:
                     yield i
                     await asyncio.sleep(0.25)
             except asyncio.CancelledError:
-                print("caught cancelled error")
+                logger.error("caught cancelled error")
 
 
     class Ask(BaseModel):
@@ -187,7 +187,6 @@ else:
 
 
     ab = AsyncBroker()
-
 
     @app.on_event("startup")
     async def startup():

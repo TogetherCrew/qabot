@@ -22,18 +22,25 @@ celery.config_from_object('tasks.celeryconfig')
 
 celery.conf.env = os.environ
 
-logger.info(f"os.environ: {os.environ}")
-logger.info(f"celery.conf().env: {celery.conf.env}")
+# logger.info(f"os.environ: {os.environ}")
+# logger.info(f"celery.conf().env: {celery.conf.env}")
 
 CELERY_HOSTNAME = f'celery@{celery.main}'
 
-es = EventBroker()
+
+# es = EventBroker()
 
 
-def count_actives():
+def count_actives() -> tuple[int, list]:
     active = celery.control.inspect().active()
     logger.info(f'active {active}')
-    return len(active[CELERY_HOSTNAME]) if active and CELERY_HOSTNAME in active else 0
+    count = 0
+    list_actives = []
+    if active and CELERY_HOSTNAME in active:
+        list_actives = active[CELERY_HOSTNAME]
+        count = len(list_actives)
+
+    return count, list_actives
 
 
 def has_active_task_id(task_id):
@@ -54,23 +61,32 @@ def has_active_task_id(task_id):
 
 
 def is_active_empty():
-    return count_actives() == 0
+    count, _ = count_actives()
+    return count == 0
+
+
+def take_active_at(index = 0):
+    count, list_actives = count_actives()
+    found = None
+    if count > 0:
+        found = list_actives[index]
+    return found
 
 
 @celery.task(bind=True)
 def vector_store_update(self, session: str, openai_key, db_connection_str, db_guild):
     set_status(self)
     # celery.control.app.conf.env
-    es.publish("HIVEMIND_API", "UPDATED_STORE",
-               {"uuid": session, "data": '/update', "status": "BEGIN"})
+    # es.publish("HIVEMIND_API", "UPDATED_STORE",
+    #            {"uuid": session, "data": '/update', "status": "BEGIN"})
 
     # OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD
     vector_store_data.main([openai_key, db_connection_str, db_guild, self])
 
     set_status(self, meta={'current': 'END'})
 
-    es.publish("HIVEMIND_API", "UPDATED_STORE",
-               {"uuid": session, "data": '/update', "status": "ENDED"})
+    # es.publish("HIVEMIND_API", "UPDATED_STORE",
+    #            {"uuid": session, "data": '/update', "status": "ENDED"})
 
 
 if __name__ == '__main__':

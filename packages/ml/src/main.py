@@ -26,7 +26,6 @@ print('loading main.py')
 convo_tool = DiscordTool(
     name="conversations_raw",
     convo_type=ConversationType.RAW,
-    embeddings=DEFAULT_EMBEDDINGS,
     args={"query": "<Best query possible to get the desired result>"},
     description="With this tool, you can search all messages from the different channels and threads in the Discord server. Use this tool to find precise information using a similarity embedding search",
     user_permission_required=False,
@@ -35,7 +34,6 @@ convo_tool = DiscordTool(
 convo_tool_summary = DiscordTool(
     name="conversations_summary",
     convo_type=ConversationType.SUMMARY,
-    embeddings=DEFAULT_EMBEDDINGS,
     args={"query": "<Best query possible to get the desired result>"},
     description="With this tool, you can search daily summaries per thread and per channel of messages in the Discord server. Use this tool to find general information about conversations using similarity embedding search.",
     user_permission_required=False,

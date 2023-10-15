@@ -17,7 +17,7 @@ class AgentTool(BaseModel):
     """
     name: str
     description: str = Field(..., description="The description of the tool")
-    func: Callable[[str], str] = Field(..., description="The function to execute")
+    func: Callable[..., Any] = Field(..., description="The function to execute")
     args: Dict[str, str] = Field(default={})
     user_permission_required: bool = Field(
         False, description="Whether the user permission is required before using this tool")
@@ -25,12 +25,16 @@ class AgentTool(BaseModel):
     class Config:
         extra = Extra.allow
 
-    def run(self, **kwargs: Any) -> str:
+    async def run(self, **kwargs: Any) -> str:
         """Run the tool."""
         try:
-            result = self.func(**kwargs)
+            #  check if func is corountine
+            if inspect.iscoroutinefunction(self.func):
+                result = await self.func(**kwargs)
+            else:
+                result = self.func(**kwargs)
         except (Exception, KeyboardInterrupt) as e:
-            print(traceback.print_exc())
+            logger.exception(traceback.print_exc())
             raise AgentToolError(str(e))
         return result
 

@@ -193,6 +193,9 @@ class Agent(BaseModel):
                     action = reasoning_result["action"]  # type: ignore
                     tool_name = action["tool_name"]  # type: ignore
                     args = action["args"]  # type: ignore
+                    # if tool_name != 'task_complete':
+                    #     tool_name = "conversations_raw"
+                    #     args = {'query':'Amin'}
                     await self.ui.notify(title="TASK", message=thoughts["task"])  # type: ignore
                     await self.ui.notify(
                         title="OBSERVATION", message=reasoning_result["observation"]  # type: ignore
@@ -235,7 +238,7 @@ class Agent(BaseModel):
                     keep_it = True
                 else:
                     await self.ui.notify(
-                        title="BREAK?", title_color="RED", message="Continue"
+                        title="Tool first time used?", title_color="RED", message="Continue"
                     )
 
                 if tool_name == "task_complete":
@@ -290,13 +293,13 @@ class Agent(BaseModel):
 
                     async def act(tool_name, args):
                         try:
-                            action_result = self._act(tool_name, args)
+                            act_result = await self._act(tool_name, args)
                         except Exception as e:
                             raise e
                         await self.ui.notify(
-                            title="ACTION RESULT", message=action_result
+                            title="ACTION RESULT", message=act_result
                         )
-                        return action_result
+                        return act_result
 
                     await self.ui.notify(
                         title="LOG",
@@ -526,14 +529,14 @@ class Agent(BaseModel):
             except Exception as e:
                 raise Exception(f"Error: {e}")
 
-    def _act(self, tool_name: str, args: Dict) -> str:
+    async def _act(self, tool_name: str, args: Dict) -> str:
         # Get the tool to use from the procedural memory
         try:
             tool = self.prodedural_memory.remember_tool_by_name(tool_name)
         except Exception as e:
             raise Exception("Invalid command: " + str(e))
         try:
-            result = tool.run(**args)
+            result = await tool.run(**args)
             return result
         except Exception as e:
             raise Exception("Could not run tool: " + str(e))

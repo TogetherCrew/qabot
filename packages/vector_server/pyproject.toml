@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = [
     "Felipe Novaes Rocha <felipe.novaes.rocha@gmail.com>",
+    "Tjitse van der Molen <tjitsevdmolen@gmail.com>",
 ]
 
 [tool.poetry.dependencies]
@@ -50,6 +51,7 @@ build-backend = "pdm.backend"
 [project]
 authors = [
     {name = "Felipe Novaes Rocha", email = "felipe.novaes.rocha@gmail.com"},
+    {name = "Tjitse van der Molen", email = "tjitsevdmolen@gmail.com"},
 ]
 requires-python = ">=3.9,<3.12.1"
 dependencies = [

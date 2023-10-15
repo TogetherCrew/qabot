@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 import aiohttp
 
+from logger.hivemind_logger import logger
+
 
 class Timeless:
     def __init__(self):
@@ -34,7 +36,7 @@ def atimeit(func):
         m, s = divmod(end, 60)
         h, m = divmod(m, 60)
         # get name of function too
-        print(f"{func.__name__} took {h:.0f}h:{m:.0f}m:{s:.0f}s")
+        logger.debug(f"{func.__name__} took {h:.0f}h:{m:.0f}m:{s:.0f}s")
         return result
 
     return wrapper
@@ -118,4 +120,10 @@ def configure_logging() -> None:
 async def async_post_request(url, json):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=json) as response:
+            return await response.json()
+
+
+async def async_get_request(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
             return await response.json()

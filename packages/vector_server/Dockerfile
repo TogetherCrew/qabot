@@ -8,9 +8,9 @@ PYTHONHASHSEED=random
 RUN pip install -U pip setuptools wheel
 RUN pip install pdm
 
+
 # copy files
 COPY pyproject.toml pdm.lock /project/
-#COPY . /project/
 
 # install dependencies and project into the local packages directory
 WORKDIR /project

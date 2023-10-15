@@ -25,35 +25,15 @@ assert DB_CONNECTION_STR, "DB_CONNECTION_STR environment variable is missing fro
 DB_GUILD = os.getenv("DB_GUILD", "")
 assert DB_GUILD, "DB_GUILD environment variable is missing from .env"
 
-
-
-USE_HF_EMBEDDINGS = False
 USE_LOCAL_STORAGE = True
-
-# DEFAULT_AGENT_DIR = os.path.join(os.path.dirname(__file__), "../agent_data")
-# print(f"DEFAULT_AGENT_DIR: {DEFAULT_AGENT_DIR}")
 
 DATASET_PATH_HUB = "hub://windholyghost/"
 
+DEEPLAKE_FOLDER = "vector_store"
+
 # DATASET_STORAGE_PATH = DEFAULT_AGENT_DIR if USE_LOCAL_STORAGE else DATASET_PATH_HUB
 
-if USE_HF_EMBEDDINGS:
-    # DEFAULT_EMBEDDINGS = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2",
-    #                                            client=SentenceTransformer(device='cpu'))
-    DEFAULT_EMBEDDINGS = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-    DEEPLAKE_RAW_PATH = os.path.join("hf", "DeepLake_VectorStore_413_419_raw_messages_HF_v2")
-    DEEPLAKE_SUMMARY_PATH = os.path.join("hf", "DeepLake_VectorStore_413_419_summaries_HF_v2")
-else:
-    DEFAULT_EMBEDDINGS = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+DEFAULT_EMBEDDINGS = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
-    DEEPLAKE_RAW_PATH = os.path.join("openai", "DeepLake_VectorStore_414_419_raw_messages")
-    DEEPLAKE_SUMMARY_PATH = os.path.join("openai", "DeepLake_VectorStore_414_419_summaries")
-
-# PERIODIC_MEMORY_DIR = os.path.join(DATASET_STORAGE_PATH, "periodic_memory")
-# SEMANTIC_MEMORY_DIR = os.path.join(DATASET_STORAGE_PATH, "semantic_memory")
-# EPISODIC_MEMORY_DIR = os.path.join(DATASET_STORAGE_PATH, "episodic_memory")
-
-# Define the base path for the serialization
-# BASE_PATH_SERIALIZATION = os.path.join(DEFAULT_AGENT_DIR, "serialization")
-#
-# print(f"BASE_PATH_SERIALIZATION: {BASE_PATH_SERIALIZATION}")
+DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, "DeepLake_VectorStore_414_419_raw_messages")
+DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, "DeepLake_VectorStore_414_419_summaries")

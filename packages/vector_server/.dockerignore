@@ -5,7 +5,12 @@ coverage/*
 __pycache__
 pdm.Dockerfile
 poetry.Dockerfile
+*.Dockerfile
 Dockerfile
+
+docker-compose*.yml
+*docker-compose*.yml
+docker-compose.yml
 
 .pdm-python
 .pdm-build

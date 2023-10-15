@@ -4,18 +4,21 @@ version: "3"
 #    name: bridge
 #    external: true
 services:
-  vector_api:
+  vector_api_dev:
     ports:
       - 1234:1234
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dev.Dockerfile
     depends_on:
       - rabbitmq
       - redis
       - celery_worker
     env_file:
       - .env
+    volumes:
+      - ./:/project/
+    command: ["python","/project/main.py"]
   celery_worker:
     build:
       context: .
