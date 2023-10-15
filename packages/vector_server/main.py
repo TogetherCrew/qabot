@@ -1,60 +1,40 @@
 import os
-from typing import Any
+from typing import Any, Optional
 
+from langchain.schema import Document
 from pydantic.main import BaseModel
 
 from server.broker import EventBroker
-from utils.constants import OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD
+from utils.constants import OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH, \
+    DEFAULT_EMBEDDINGS
+from langchain.vectorstores import DeepLake
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# import torch
 
-
-# dc = torch.cuda.device_count()
-# print('dc', dc)
 if __name__ == "__main__":
     import uvicorn
     API_PORT = os.getenv('PORT', 1234)
     uvicorn.run("main:app", host="0.0.0.0", port=API_PORT, reload=True)
 else:
-    from starlette.background import BackgroundTasks
     from starlette.responses import Response
 
     from logger.embedding_logger import get_logger
 
-    # from utils.util import configure_logging
-    # import requests
     from asgi_correlation_id import CorrelationIdMiddleware
     from fastapi import FastAPI, Request, HTTPException
     from fastapi import Request
 
     import logging
 
-    # from ray import serve
-
-    logger = get_logger("vector_server")
+    logger = get_logger("VECTOR_SERVER")
 
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-    eb = EventBroker()
+    # eb = EventBroker()
 
     app = FastAPI()
 
-    # app.include_router(loginRouter)
-
-    origins = ["*"]
-
-    # app.add_middleware(
-    #     CORSMiddleware,
-    #     allow_origins=origins,
-    #     allow_origin_regex=".*",
-    #     allow_credentials=True,
-    #     allow_methods=["*"],
-    #     allow_headers=["*"],
-    #     expose_headers=['X-Request-ID'],
-    # )
-    #
     app.add_middleware(CorrelationIdMiddleware)
 
     from redis import Redis, ConnectionError as RedisConnectionError
@@ -65,8 +45,6 @@ else:
 
     redis_instance = Redis.from_url(task.redis_url)
     lock = RedisLock(redis_instance, name="task_id")
-
-    # REDIS_TASK_KEY = "current_task"
 
 
     class TaskOut(BaseModel):
@@ -85,15 +63,27 @@ else:
     async def status(request: Request) -> Response:
         return Response(content="OK")
 
+    # TODO maybe create another route using POST and query as body to avoid url encoding
+    # TODO we should secure that endpoint with a token and/or IP allowlist
+    @app.get("/search/{where}/{query}")
+    def search(request: Request, where: str = None, query: str = None, k: Optional[int] = 5) -> list[Document]:
+        logger.info(f"search: {where} {query}")
+
+        db = DeepLake(dataset_path=(DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH),
+                      read_only=True,
+                      embedding=DEFAULT_EMBEDDINGS
+                      )
+        relevant_documents = db.similarity_search(query=query, k=k)
+        logger.debug(f"relevant_documents: {relevant_documents}")
+
+        return relevant_documents
 
     @app.get("/update/")
-    def vectorstore_update(request: Request, background_tasks: BackgroundTasks) -> Any:
-        logger.info("vectorstore_update:")
-
+    def vectorstore_update(request: Request) -> Any:
         try:
             session = f"{request.headers['x-request-id']}"
-            eb.publish("HIVEMIND_API", "UPDATED_STORE",
-                    {"uuid": session, "data": '/update', "status": "STARTING"})
+            # eb.publish("HIVEMIND_API", "UPDATED_STORE",
+            #         {"uuid": session, "data": '/update', "status": "STARTING"})
 
             logger.debug(f'session: {session} | ip:{request.client.host}:{request.client.port}')
 
@@ -101,19 +91,12 @@ else:
                 raise HTTPException(status_code=500, detail="Could not acquire lock")
 
             if task.is_active_empty():
-                # task_id = redis_instance.get(REDIS_TASK_KEY)
-
-                # if task_id is None or task.celery.AsyncResult(task_id).ready():
-                # no task was ever run, or the last task finished already
                 r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD)
-
-                # redis_instance.set(REDIS_TASK_KEY, r.task_id)
-
                 return _to_task_out(r)
             else:
                 # the last task is still running!
                 raise HTTPException(
-                    status_code=400, detail="A task is already being executed"
+                    status_code=400, detail=f"A task is already being executed id:{task.take_active_at(0)['id']}"
                 )
         except RedisConnectionError as rce:
             msg = f'RedisConnectionError: {rce}'
