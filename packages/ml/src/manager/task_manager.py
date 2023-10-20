@@ -5,12 +5,7 @@ from langchain import LLMChain
 from llm.generate_task_plan.prompt import get_subquestions_template, get_template
 from llm.list_output_parser import LLMListOutputParser
 
-# todo: features
-# - [ ] delete a task
-# - [ ] create new task / update a task
-# - [ ] reorder a task
-# - [ ] return list all results of completed a task
-# https://github.com/yoheinakajima/babyagi/blob/main/babyagi.py#L384
+
 
 
 class Task(BaseModel):
