@@ -1,5 +1,6 @@
 import json
 import time
+from functools import wraps
 from logging.config import dictConfig
 
 from langchain.schema import LLMResult
@@ -44,6 +45,7 @@ def atimeit(func):
 
 # create a decorator that print time of execution of async function using time.time() in H:M:S
 def timeit(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         start = time.time()
         result = func(*args, **kwargs)
