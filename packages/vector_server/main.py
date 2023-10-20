@@ -4,7 +4,6 @@ from typing import Any, Optional
 from langchain.schema import Document
 from pydantic.main import BaseModel
 
-from server.broker import EventBroker
 from utils.constants import OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH, \
     DEFAULT_EMBEDDINGS
 from langchain.vectorstores import DeepLake
@@ -60,13 +59,13 @@ else:
 
 
     @app.get("/")
-    async def status(request: Request) -> Response:
+    async def status() -> Response:
         return Response(content="OK")
 
     # TODO maybe create another route using POST and query as body to avoid url encoding
     # TODO we should secure that endpoint with a token and/or IP allowlist
     @app.get("/search/{where}/{query}")
-    def search(request: Request, where: str = None, query: str = None, k: Optional[int] = 5) -> list[Document]:
+    def search(where: str = None, query: str = None, k: Optional[int] = 5) -> list[Document]:
         logger.info(f"search: {where} {query}")
 
         db = DeepLake(dataset_path=(DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH),
