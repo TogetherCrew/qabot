@@ -10,12 +10,12 @@ from llm.summarize.prompt import get_final_answer_template
 from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
-from serializer_manager import SerializationManager
+from manager.serializer_manager import SerializationManager
 from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION, EPISODIC_MEMORY_DIR, SEMANTIC_MEMORY_DIR
 from utils.util import atimeit
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
-from task_manager import TaskManager
+from manager.task_manager import TaskManager
 from llm.json_output_parser import FixJsonException, LLMJsonOutputParser
 from llm.reason.schema import JsonSchema as ReasonSchema
 from langchain.llms.base import BaseLLM

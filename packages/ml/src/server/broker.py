@@ -3,7 +3,6 @@ import logging
 import os
 import threading
 from enum import Enum
-from types import DynamicClassAttribute
 from typing import Callable, Any, Type
 
 from tc_messageBroker import RabbitMQ
@@ -12,7 +11,7 @@ import tc_messageBroker.rabbit_mq.event.events_microservice as Events
 
 from logger.hivemind_logger import logger
 
-logging.getLogger("pika").setLevel(logging.WARNING)
+logging.getLogger("PIKA").setLevel(logging.WARNING)
 
 
 class QueueObj(Enum):

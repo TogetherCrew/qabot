@@ -2,16 +2,12 @@ from enum import Enum
 
 # import inspect
 import json
-import os
-from langchain.vectorstores import DeepLake
-from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from pydantic.fields import Field
 
 from logger.hivemind_logger import logger
 from tools.base import AgentTool
-from utils.constants import DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH
-from utils.util import async_post_request, async_get_request
+from utils.util import async_get_request
 
 
 class ConversationType(Enum):

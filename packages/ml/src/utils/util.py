@@ -29,6 +29,7 @@ def time_start() -> Timeless:
 
 
 def atimeit(func):
+    @wraps(func)
     async def wrapper(*args, **kwargs):
         start = time.time()
         result = await func(*args, **kwargs)
