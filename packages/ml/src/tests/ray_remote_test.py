@@ -2,15 +2,16 @@ import time
 
 import requests
 
-r = requests.post('http://localhost:3333/dev_token')
-token = r.json()['access_token']
-print(token)
+# r = requests.post('http://localhost:3333/dev_token')
+# token = r.json()['access_token']
+# print(token)
 
 
 r = requests.post("http://localhost:3333/ask", json={
     'question': 'Who is Amin?'
-}, headers={
-    'Authorization': f'Bearer {token}'},
+},
+    #               , headers={
+    # 'Authorization': f'Bearer {token}'},
                   stream=True)
 
 start = time.time()

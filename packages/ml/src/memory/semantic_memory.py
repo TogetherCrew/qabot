@@ -2,13 +2,12 @@ import asyncio
 import os
 import traceback
 
-from sentence_transformers import SentenceTransformer
 import json
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
-from langchain.vectorstores import DeepLake
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from llm.extract_entity.prompt import get_chat_template
 from llm.extract_entity.schema import JsonSchema as ENTITY_EXTRACTION_SCHEMA
@@ -17,6 +16,7 @@ from ui.cui import CommandlineUserInterface
 from utils.constants import DEFAULT_EMBEDDINGS, SEMANTIC_MEMORY_DIR
 from utils.util import atimeit, timeit
 
+import base58
 CREATE_JSON_SCHEMA_STR = json.dumps(ENTITY_EXTRACTION_SCHEMA.schema)
 
 
@@ -26,10 +26,10 @@ class SemanticMemory(BaseModel):
     openaichat: Optional[ChatOpenAI] = Field(
         None, description="ChatOpenAI class for the agent"
     )
-    embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS,
+    embeddings: OpenAIEmbeddings = Field(DEFAULT_EMBEDDINGS,
                                               title="Embeddings to use for tool retrieval",
                                               )
-    vector_store: DeepLake = Field(
+    vector_store: FAISS = Field(
         None, title="Vector store to use for tool retrieval"
     )
     ui: CommandlineUserInterface | None = Field(None)
@@ -37,11 +37,12 @@ class SemanticMemory(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if self.vector_store is None:
-            self.vector_store = DeepLake(read_only=True, dataset_path=SEMANTIC_MEMORY_DIR,
-                                         embedding_function=self.embeddings)
+    # def __init__(self, question: str, **kwargs):
+    #     super().__init__(**kwargs)
+        # filename = base58.b58encode(question.encode()).decode()
+        # if self.vector_store is None:
+            # self.vector_store = DeepLake(read_only=True, dataset_path=os.path.join(SEMANTIC_MEMORY_DIR, f"{filename}"),
+            #                              embedding=self.embeddings)
 
     def __del__(self):
         del self.embeddings
@@ -77,8 +78,6 @@ class SemanticMemory(BaseModel):
 
         try:
             if len(result_json_obj) > 0:
-                # self._embed_knowledge(result_json_obj)
-                # asyncio to run _embed_knowledge in async
                 await asyncio.create_task(self._embed_knowledge(result_json_obj))
 
         except Exception as e:
@@ -112,26 +111,28 @@ class SemanticMemory(BaseModel):
             metadata_list.append({"entity": entity, "description": description})
 
         if self.vector_store is None:
-            self.vector_store = DeepLake(read_only=False, dataset_path=SEMANTIC_MEMORY_DIR,
-                                         embedding_function=self.embeddings)
+            self.vector_store = FAISS.from_texts(texts=description_list,metadatas=metadata_list,
+                                                 embedding=self.embeddings)
+            # self.vector_store = DeepLake(read_only=False, dataset_path=SEMANTIC_MEMORY_DIR,
+            #                              embedding=self.embeddings)
 
         self.vector_store.add_texts(texts=description_list, metadatas=metadata_list)
 
-    async def save_local(self, path: str) -> None:
-        """Save the vector store to a local folder."""
+    # async def save_local(self, path: str) -> None:
+    #     """Save the vector store to a local folder."""
 
         # async def _save():
         #     self.vector_store.save_local(folder_path=path)
 
         # await asyncio.create_task(_save())
 
-    def load_local(self, path: str) -> None:
-        """Load the vector store from a local folder."""
-
-        # async def _load():
-        #     self.vector_store = FAISS.load_local(
-        #         folder_path=path, embeddings=self.embeddings
-        #     )
-
-        # await asyncio.create_task(_load())
-        self.vector_store = DeepLake(read_only=True, dataset_path=path, embedding_function=self.embeddings)
+    # def load_local(self, path: str) -> None:
+    #     """Load the vector store from a local folder."""
+    #
+    #     # async def _load():
+    #     #     self.vector_store = FAISS.load_local(
+    #     #         folder_path=path, embeddings=self.embeddings
+    #     #     )
+    #
+    #     # await asyncio.create_task(_load())
+    #     self.vector_store = DeepLake(read_only=True, dataset_path=path, embedding=self.embeddings)

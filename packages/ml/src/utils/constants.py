@@ -2,18 +2,21 @@
 import os
 
 from dotenv import load_dotenv
-from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
-from sentence_transformers import SentenceTransformer
+from langchain.embeddings import OpenAIEmbeddings
 
+from logger.hivemind_logger import logger
 
-
-# Set API Keys
-load_dotenv()
+ENV = os.getenv('ENV')
+print(f"ENV:{ENV}")
+if ENV == 'local':
+    load_dotenv(dotenv_path='../.local.env')
+else:
+    load_dotenv()
 
 ACTIVELOOP_TOKEN = os.getenv("ACTIVELOOP_TOKEN", None)
-os.environ['ACTIVELOOP_TOKEN'] = ACTIVELOOP_TOKEN
+# os.environ['ACTIVELOOP_TOKEN'] = ACTIVELOOP_TOKEN
 
-OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo-0613")
+OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo")
 assert OPENAI_API_MODEL, "OPENAI_API_MODEL environment variable is missing from .env"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 assert OPENAI_API_KEY, "OPENAI_API_KEY environment variable is missing from .env"
@@ -37,6 +40,12 @@ assert AGENT_ROLE, "AGENT_ROLE variable is missing from .env"
 AGENT_OBJECTIVE = os.getenv("AGENT_OBJECTIVE", "")
 assert AGENT_OBJECTIVE, "AGENT_OBJECTIVE variable is missing from .env"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+
+
 USE_HF_EMBEDDINGS = False
 USE_LOCAL_STORAGE = True
 
@@ -48,8 +57,9 @@ DATASET_PATH_HUB = "hub://windholyghost/"
 DATASET_STORAGE_PATH = DEFAULT_AGENT_DIR if USE_LOCAL_STORAGE else DATASET_PATH_HUB
 
 if USE_HF_EMBEDDINGS:
-    DEFAULT_EMBEDDINGS = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2",
-                                               client=SentenceTransformer(device='cpu'))
+    # DEFAULT_EMBEDDINGS = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2",
+    #                                            client=SentenceTransformer(device='cpu'))
+    DEFAULT_EMBEDDINGS = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
     DEEPLAKE_RAW_PATH = os.path.join("hf", "DeepLake_VectorStore_413_419_raw_messages_HF_v2")
     DEEPLAKE_SUMMARY_PATH = os.path.join("hf", "DeepLake_VectorStore_413_419_summaries_HF_v2")
 else:

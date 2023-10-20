@@ -1,9 +1,8 @@
 import os
 
-from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel, Field
 from langchain.schema import Document
-from langchain.vectorstores import DeepLake
+from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import List
 
@@ -23,7 +22,7 @@ class ProcedualMemory(BaseModel):
     tools: List[AgentTool] = Field([], title="Agent Tools")
     embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS, title="Embeddings to use for tool retrieval")
     docs: List[Document] = Field([], title="Documents to use for tool retrieval")
-    vector_store: DeepLake = Field(
+    vector_store: FAISS = Field(
         None, title="Vector store to use for tool retrieval")
 
     class Config:
@@ -48,6 +47,7 @@ class ProcedualMemory(BaseModel):
 
     def remember_relevant_tools(self, query: str) -> List[AgentTool]:
         """Remember relevant tools for a query."""
+
         retriever = self.vector_store.as_retriever()
         relevant_documents = retriever.get_relevant_documents(query)
         return [self.tools[d.metadata["index"]] for d in relevant_documents]
@@ -65,9 +65,9 @@ class ProcedualMemory(BaseModel):
 
     def _embed_docs(self) -> None:
         """Embed tools."""
-        if self.vector_store is None:
-            self.vector_store = DeepLake(dataset_path=PERIODIC_MEMORY_DIR,embedding_function=self.embeddings)
-        self.vector_store.add_texts(texts=[doc.page_content for doc in self.docs], metadatas=[doc.metadata for doc in self.docs])
-        # self.vector_store: FAISS = FAISS.from_documents(
-        #     self.docs, self.embeddings
-        # )
+        # if self.vector_store is None:
+            # self.vector_store = DeepLake(dataset_path=PERIODIC_MEMORY_DIR,embedding=self.embeddings)
+        # self.vector_store.add_texts(texts=[doc.page_content for doc in self.docs], metadatas=[doc.metadata for doc in self.docs])
+        self.vector_store: FAISS = FAISS.from_documents(
+            self.docs, self.embeddings
+        )

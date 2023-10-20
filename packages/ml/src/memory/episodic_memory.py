@@ -4,12 +4,13 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain.llms.base import BaseLLM
 from langchain import LLMChain
-from langchain.vectorstores import DeepLake
+from langchain.vectorstores import DeepLake, FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from llm.summarize.prompt import get_template
 from ui.cui import CommandlineUserInterface
 from utils.constants import DEFAULT_EMBEDDINGS, EPISODIC_MEMORY_DIR
 from utils.util import atimeit, timeit
+import base58
 
 
 class Episode(BaseModel):
@@ -40,7 +41,7 @@ class EpisodicMemory(BaseModel):
     embeddings: HuggingFaceEmbeddings = Field(DEFAULT_EMBEDDINGS,
         title="Embeddings to use for tool retrieval",
     )
-    vector_store: DeepLake = Field(
+    vector_store: FAISS = Field(
         None, title="Vector store to use for tool retrieval"
     )
 
@@ -48,6 +49,13 @@ class EpisodicMemory(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    # def __init__(self, question: str, **kwargs):
+    #     super().__init__(**kwargs)
+    #     filename = base58.b58encode(question.encode()).decode()
+    #     if self.vector_store is None:
+            # self.vector_store = DeepLake(read_only=True, dataset_path=os.path.join(EPISODIC_MEMORY_DIR, f"{filename}"),
+            #                              embedding=self.embeddings)
 
     def __del__(self):
         del self.embeddings
@@ -139,31 +147,31 @@ class EpisodicMemory(BaseModel):
         ]
         if self.vector_store is None:
             print('build deeplake')
-            self.vector_store = DeepLake(read_only=False, dataset_path=EPISODIC_MEMORY_DIR,embedding_function=self.embeddings)
-            # self.vector_store = FAISS.from_texts(
-            #     texts=texts, embedding=self.embeddings, metadatas=metadatas
-            # )
-        # else:
-        print('_embed_episode::add_texts')
-        self.vector_store.add_texts(texts=texts, metadatas=metadatas)
+        #     self.vector_store = DeepLake(read_only=False, dataset_path=EPISODIC_MEMORY_DIR,embedding=self.embeddings)
+            self.vector_store = FAISS.from_texts(
+                texts=texts, embedding=self.embeddings, metadatas=metadatas
+            )
+        else:
+            print('_embed_episode::add_texts')
+            self.vector_store.add_texts(texts=texts, metadatas=metadatas)
 
-    async def save_local(self, path: str) -> None:
-        """Save the vector store locally."""
-        # async def _save():
-        print('save_local_inner')
-        # self.vector_store.save_local(folder_path=path)
-        # await asyncio.to_thread(vs.save_local, folder_path=path)
-        print('post save_local inner')
-        # await asyncio.create_task(_save())
+    # async def save_local(self, path: str) -> None:
+    #     """Save the vector store locally."""
+    #     # async def _save():
+    #     print('save_local_inner')
+    #     # self.vector_store.save_local(folder_path=path)
+    #     # await asyncio.to_thread(vs.save_local, folder_path=path)
+    #     print('post save_local inner')
+    #     # await asyncio.create_task(_save())
 
-    def load_local(self, path: str) -> None:
-        """Load the vector store locally."""
-        print('local_load inner')
+    # def load_local(self, path: str) -> None:
+    #     """Load the vector store locally."""
+    #     print('local_load inner')
         # async def _load():
         #     self.vector_store = FAISS.load_local(
         #         folder_path=path, embeddings=self.embeddings
         #     )
-        self.vector_store = DeepLake(read_only=False, dataset_path=path,embedding_function=self.embeddings)
+        # self.vector_store = DeepLake(read_only=False, dataset_path=path,embedding=self.embeddings)
         # await asyncio.create_task(_load())
         # await asyncio.to_thread(FAISS.load_local, folder_path=path, embeddings=self.embeddings)
             
