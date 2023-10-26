@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import json
 
 import aio_pika
@@ -89,38 +88,3 @@ class AsyncBroker:
             await queue_obj.listen(self.connection, event_name=event_name, callback=callback)
         else:
             logger.debug(f"queue_obj is none")
-
-
-# def test_broker_main():
-#     with concurrent.futures.ThreadPoolExecutor() as executor:
-#         future = executor.submit(run_coroutines)
-
-
-# async def run_coroutines():
-#     ab = AsyncBroker()
-#     await ab.connect()
-#     # await ab.listen()
-#     coroutines = [
-#         ab.listen(queue_name=Queue.HIVEMIND, event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
-#                   callback=lambda a: logger.debug(f"Custom callback {a}")),
-#         ab.listen(queue_name=Queue.TWITTER_BOT, event_name=Event.TWITTER_BOT.SEND_MESSAGE),
-#
-#     ]
-#     tasks = []
-#     try:
-#         tasks = await asyncio.gather(*coroutines)
-#         logger.debug('Never get in here')
-#     except KeyboardInterrupt:
-#         # Handle KeyboardInterrupt here if needed.
-#         pass
-#     finally:
-#         # Clean up tasks and close connections.
-#         for task in tasks:
-#             if task:
-#                 task.cancel()
-#         await asyncio.gather(*coroutines, return_exceptions=True)
-#         # await con.close()
-
-
-# if __name__ == "__main__":
-#     asyncio.run(test_broker_main())

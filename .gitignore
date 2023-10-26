@@ -1,2 +1,4 @@
 .idea/
 **/.idea/
+packages/discord/
+.secrets
