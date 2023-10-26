@@ -10,9 +10,6 @@ from langchain.embeddings import OpenAIEmbeddings
 # Set API Keys
 load_dotenv()
 
-ACTIVELOOP_TOKEN = os.getenv("ACTIVELOOP_TOKEN", None)
-os.environ['ACTIVELOOP_TOKEN'] = ACTIVELOOP_TOKEN
-
 OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo-0613")
 assert OPENAI_API_MODEL, "OPENAI_API_MODEL environment variable is missing from .env"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -26,8 +23,6 @@ DB_GUILD = os.getenv("DB_GUILD", "")
 assert DB_GUILD, "DB_GUILD environment variable is missing from .env"
 
 USE_LOCAL_STORAGE = True
-
-DATASET_PATH_HUB = "hub://windholyghost/"
 
 DEEPLAKE_FOLDER = "vector_store"
 
