@@ -11,7 +11,7 @@ from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
 from manager.serializer_manager import SerializationManager
-from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION, EPISODIC_MEMORY_DIR, SEMANTIC_MEMORY_DIR
+from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION
 from utils.util import atimeit
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
@@ -553,8 +553,6 @@ class Agent(BaseModel):
         return result
 
     async def save_agent(self) -> None:
-        episodic_memory_dir = EPISODIC_MEMORY_DIR
-        semantic_memory_dir = SEMANTIC_MEMORY_DIR
         filename = f"{self.dir}/agent_data.json"
         # print("Episodic memory will save to", episodic_memory_dir)
         # await self.episodic_memory.save_local(path=episodic_memory_dir)
@@ -564,8 +562,6 @@ class Agent(BaseModel):
         data = {
             "name": self.name,
             "role": self.role,
-            "episodic_memory": episodic_memory_dir,
-            "semantic_memory": semantic_memory_dir,
         }
         print("Agent data will save to", filename)
         async with aiofiles.open(filename, "w") as f:

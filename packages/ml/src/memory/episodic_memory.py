@@ -8,7 +8,7 @@ from langchain.vectorstores import DeepLake, FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from llm.summarize.prompt import get_template
 from ui.cui import CommandlineUserInterface
-from utils.constants import DEFAULT_EMBEDDINGS, EPISODIC_MEMORY_DIR
+from utils.constants import DEFAULT_EMBEDDINGS
 from utils.util import atimeit, timeit
 import base58
 

@@ -7,7 +7,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from typing import List
 
 from tools.base import AgentTool
-from utils.constants import DEFAULT_EMBEDDINGS,  PERIODIC_MEMORY_DIR
+from utils.constants import DEFAULT_EMBEDDINGS
 
 
 class ProcedualMemoryException(Exception):

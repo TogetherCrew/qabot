@@ -13,7 +13,7 @@ from llm.extract_entity.prompt import get_chat_template
 from llm.extract_entity.schema import JsonSchema as ENTITY_EXTRACTION_SCHEMA
 from llm.json_output_parser import LLMJsonOutputParser, LLMJsonOutputParserException
 from ui.cui import CommandlineUserInterface
-from utils.constants import DEFAULT_EMBEDDINGS, SEMANTIC_MEMORY_DIR
+from utils.constants import DEFAULT_EMBEDDINGS
 from utils.util import atimeit, timeit
 
 import base58
