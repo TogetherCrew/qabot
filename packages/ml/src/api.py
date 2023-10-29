@@ -1,6 +1,7 @@
 import gc
 import os
 import traceback
+from asyncio import Task
 
 from tc_messageBroker.rabbit_mq.queue import Queue
 from tc_messageBroker.rabbit_mq.event import Event
@@ -65,8 +66,8 @@ else:
         return await http_exception_handler(
             request,
             HTTPException(
-                500,
-                'Internal server error',
+                status_code=500,
+                detail=f'Internal server error: {exc}',
                 headers={'X-Request-ID': correlation_id.get() or ""}
             ))
 
@@ -169,24 +170,17 @@ else:
         ar = AsyncResponse()
         return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question)))
 
-
-    # def on_event(message: dict[str, Any]) -> None:
-    #     logger.info("on_event %s", message)
-    #     if message['event'] == "SEND_MESSAGE":
-    #         logger.info("on_event %s", message['event'])
-    #     elif message['event'] == "UPDATED_STORE":
-    #         logger.info("UPDATED_STORE %s", message)
-    #     else:
-    #         logger.info("Event not registered: %s", message['event'])
-
-    # def log_event(msg):
-    #     logger.info(f"queue: {EventBroker.get_queue_by_event(msg['event'])} msg:{msg}")
-
     def log_event(msg: str, queue_name: str, event_name: str):
         logger.info(f"{queue_name}->{event_name}::{msg}")
 
 
+    ######################################
+    ### STARTUP GLOBALS VARIABLES HERE ###
+    ######################################
+
     ab = AsyncBroker()
+    hivemind_task: Task | None = None
+
 
     @app.on_event("startup")
     async def startup():
@@ -198,46 +192,20 @@ else:
             loop.set_debug(True)
             logger.info(loop)
 
-            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
-                                                           event_name=Event.DISCORD_ANALYZER.RUN,
-                                                           callback=log_event
-                                                           ))
-
-            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.DISCORD_ANALYZER,
-                                                           event_name=Event.DISCORD_ANALYZER.RUN_ONCE,
-                                                           callback=log_event
-                                                           ))
-
-            asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
-                                                           event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
-                                                           callback=log_event
-                                                           ))
+            hivemind_task = asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
+                                                                           event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
+                                                                           callback=log_event
+                                                                           ))
         except aiormq.exceptions.AMQPConnectionError as amqp:
             logger.error(amqp)
-
-        # test_broker_main()
-        #
-        # eb = EventBroker()
-        # eb.t_listen(Queue.HIVEMIND)
-        # eb.add_event(Event.HIVEMIND.GUILD_MESSAGES_UPDATED, log_event)
-        # # eb.add_event(Event.HIVEMIND.INTERACTION_CREATED, log_event)
-        #
-        # eb2 = EventBroker()
-        # eb2.t_listen(Queue.TWITTER_BOT)
-        # eb2.add_event(Event.TWITTER_BOT.SEND_MESSAGE, log_event)
-        # #
-        # eb3 = EventBroker()
-        # eb3.t_listen(Queue.DISCORD_ANALYZER)
-        # eb3.add_event(Event.DISCORD_ANALYZER.RUN, log_event)
-        # eb3.add_event(Event.DISCORD_ANALYZER.RUN_ONCE, log_event)
-
-        # logger.info(f"QueueObj.DISCORD_ANALYZER.event.RUN: {QueueObj.DISCORD_ANALYZER.event.RUN}")
 
         print("Server Startup!")
 
 
     @app.on_event("shutdown")
     async def shutdown():
+        if hivemind_task:
+            hivemind_task.cancel()
         if ab:
             await ab.connection.close()
         print("Server Shutdown!")
