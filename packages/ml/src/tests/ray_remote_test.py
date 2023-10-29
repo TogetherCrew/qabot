@@ -8,7 +8,7 @@ import requests
 
 
 r = requests.post("http://localhost:3333/ask", json={
-    'question': 'Who is Amin?'
+    'question': 'What Neo4j is used for?'
 },
     #               , headers={
     # 'Authorization': f'Bearer {token}'},
