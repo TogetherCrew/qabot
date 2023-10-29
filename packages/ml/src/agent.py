@@ -11,7 +11,7 @@ from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
 from manager.serializer_manager import SerializationManager
-from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION, EPISODIC_MEMORY_DIR, SEMANTIC_MEMORY_DIR
+from utils.constants import DEFAULT_AGENT_DIR, BASE_PATH_SERIALIZATION
 from utils.util import atimeit
 from ui.cui import CommandlineUserInterface
 import llm.reason.prompt as ReasonPrompt
@@ -40,7 +40,7 @@ class Agent(BaseModel):
     )
     name: str = Field(..., description="The name of the agent")
     role: str = Field(..., description="The role of the agent")
-    question: str = Field(..., description="The question of the agent")
+    question: Optional[str] = Field(..., description="The question of the agent")
     ui: CommandlineUserInterface = Field(
         CommandlineUserInterface(), description="The user interface for the agent"
     )
@@ -48,13 +48,13 @@ class Agent(BaseModel):
     openaichat: Optional[ChatOpenAI] = Field(
         None, description="ChatOpenAI class for the agent"
     )
-    prodedural_memory: ProcedualMemory = Field(
+    prodedural_memory: Optional[ProcedualMemory] = Field(
         ProcedualMemory(), description="The procedural memory about tools agent uses"
     )
-    episodic_memory: EpisodicMemory = Field(
+    episodic_memory: Optional[EpisodicMemory] = Field(
         None, description="The short term memory of the agent"
     )
-    semantic_memory: SemanticMemory = Field(
+    semantic_memory: Optional[SemanticMemory] = Field(
         None, description="The long term memory of the agent"
     )
     task_manager: TaskManager = Field(
@@ -553,8 +553,6 @@ class Agent(BaseModel):
         return result
 
     async def save_agent(self) -> None:
-        episodic_memory_dir = EPISODIC_MEMORY_DIR
-        semantic_memory_dir = SEMANTIC_MEMORY_DIR
         filename = f"{self.dir}/agent_data.json"
         # print("Episodic memory will save to", episodic_memory_dir)
         # await self.episodic_memory.save_local(path=episodic_memory_dir)
@@ -564,8 +562,6 @@ class Agent(BaseModel):
         data = {
             "name": self.name,
             "role": self.role,
-            "episodic_memory": episodic_memory_dir,
-            "semantic_memory": semantic_memory_dir,
         }
         print("Agent data will save to", filename)
         async with aiofiles.open(filename, "w") as f:
