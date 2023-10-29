@@ -122,12 +122,6 @@ else:
         if stats and task.CELERY_HOSTNAME in stats:
             logger.info(f'STATS in {stats[task.CELERY_HOSTNAME]}')
 
-        # if not task.has_active_task_id(task_id):
-        #     # task_id = task_id or redis_instance.get(REDIS_TASK_KEY)
-        #     # if task_id is None:
-        #     raise HTTPException(
-        #         status_code=400, detail=f"Could not determine task {task_id}"
-        #     )
         r = task.celery.AsyncResult(task_id)
         return _to_task_out(r)
 
