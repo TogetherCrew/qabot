@@ -40,7 +40,7 @@ dependencies = [
     "openai<1.0.0,>=0.27.8",
     "celery[redis]>=5.3.4",
     "tiktoken<1.0.0,>=0.4.0",
-    "langchain<1.0.0,>=0.0.193",
+    "langchain>=0.0.325",
 ]
 name = "VectorServer"
 version = "0.1.0"
