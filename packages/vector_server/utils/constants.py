@@ -13,9 +13,7 @@ ENV_FILE = os.getenv('ENV_FILE')
 
 logger.debug(f"ENV_FILE: {ENV_FILE}")
 
-if ENV_FILE == 'docker':
-    load_dotenv()
-else:
+if ENV_FILE != 'docker':
     load_dotenv(dotenv_path='../.local.env')
 
 OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo-0613")
