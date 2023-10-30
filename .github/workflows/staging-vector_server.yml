@@ -1,4 +1,4 @@
-name: Staging Build ML API
+name: Staging Build Vector Server
 
 on:
   push:
@@ -16,11 +16,11 @@ jobs:
         - name: Checkout
           uses: actions/checkout@v3
 
-        - name: Get changed files in the packages/ml folder
+        - name: Get changed files in the packages/vector_server folder
           id: changed-files
           uses: tj-actions/changed-files@v40
           with:
-            files: packages/ml/**/*
+            files: packages/vector_server/**/*
 
   build:
     name: Build + Push Image
@@ -28,7 +28,7 @@ jobs:
     if: needs.check-changes.outputs.any_changed == 'true'
     uses: ./.github/workflows/build-push.yml
     with:
-      CONTEXT: ./packages/ml
+      CONTEXT: ./packages/vector_server
       TARGET: prod
 #     Only used with nektos/act to test locally
 #    secrets:
@@ -40,6 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Skip Build
-        run: echo "Skipping build because there are no changes in packages/ml"
+        run: echo "Skipping build because there are no changes in packages/vector_server"
 
 
