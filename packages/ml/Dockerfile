@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye AS base
+FROM python:3.10-slim-bullseye AS prod
 
 ENV PYTHONFAULTHANDLER=1 \
 PYTHONUNBUFFERED=1 \
@@ -9,16 +9,13 @@ RUN pip install -U pip setuptools wheel
 RUN pip install pdm
 
 # copy files
-COPY pyproject.toml /project/
-
-# install dependencies and project into the local packages directory
-WORKDIR /project
-RUN pdm install
-
-
-FROM python:3.10-slim-bullseye as prod
-
 COPY . /project/
-WORKDIR /project/
+
+WORKDIR /project
+
+RUN pdm lock
+RUN pdm export --format requirements --without-hashes > requirements.txt
+
+RUN pip install -r requirements.txt
 
 CMD ["python","src/api.py"]
