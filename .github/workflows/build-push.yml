@@ -11,6 +11,11 @@ on:
         default: 'prod'
         required: false
         type: string
+      IMAGE_NAME:
+        description: 'The name of the image to build'
+        required: true
+        type: string
+
 
 env:
   REGISTRY: ghcr.io
@@ -47,5 +52,5 @@ jobs:
           context: ${{ inputs.CONTEXT }}
           target: ${{ inputs.TARGET }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}@${{ inputs.IMAGE_NAME }}
           labels: ${{ steps.meta.outputs.labels }}

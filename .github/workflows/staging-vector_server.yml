@@ -30,6 +30,7 @@ jobs:
     with:
       CONTEXT: ./packages/vector_server
       TARGET: prod
+      IMAGE_NAME: vector_server
 #     Only used with nektos/act to test locally
 #    secrets:
 #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

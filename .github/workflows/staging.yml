@@ -30,6 +30,7 @@ jobs:
     with:
       CONTEXT: ./packages/ml
       TARGET: prod
+      IMAGE_NAME: ml
 #     Only used with nektos/act to test locally
 #    secrets:
 #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
