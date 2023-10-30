@@ -6,14 +6,12 @@ on:
     branches:
       - main
 
-env:
-  CONTEXT: ./packages/ml
-  TARGET: prod
-
 jobs:
   check-changes:
     name: Check for changes
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
+    outputs:
+      any_changed: ${{ steps.changed-files.outputs.any_changed }}
     steps:
         - name: Checkout
           uses: actions/checkout@v3
@@ -27,7 +25,7 @@ jobs:
   build:
     name: Build + Push Image
     needs: check-changes
-    if: steps.changed-files.outputs.any_changed == 'true'
+    if: needs.check-changes.outputs.any_changed == 'true'
     uses: ./.github/workflows/build-push.yml
     with:
       CONTEXT: ./packages/ml
