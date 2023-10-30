@@ -1,6 +1,5 @@
 name: Staging Build
 
-#on: pull_request
 on:
   push:
     branches:
@@ -30,6 +29,7 @@ jobs:
     with:
       CONTEXT: ./packages/ml
       TARGET: prod
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#     Only used with nektos/act to test locally
+#    secrets:
+#      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
