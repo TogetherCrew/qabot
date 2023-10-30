@@ -1,0 +1,37 @@
+name: Staging Build
+
+#on: pull_request
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CONTEXT: ./packages/ml
+  TARGET: prod
+
+jobs:
+  check-changes:
+    name: Check for changes
+    runs-on: 'ubuntu-latest'
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+
+        - name: Get changed files in the packages/ml folder
+          id: changed-files
+          uses: tj-actions/changed-files@v40
+          with:
+            files: packages/ml/**/*
+
+  build:
+    name: Build + Push Image
+    needs: check-changes
+    if: steps.changed-files.outputs.any_changed == 'true'
+    uses: ./.github/workflows/build-push.yml
+    with:
+      CONTEXT: ./packages/ml
+      TARGET: prod
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

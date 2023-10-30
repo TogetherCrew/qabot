@@ -1,0 +1,51 @@
+on:
+  workflow_call:
+    inputs:
+      CONTEXT:
+        description: 'The context where find Dockerfile passed from the caller workflow'
+        default: '.'
+        required: false
+        type: string
+      TARGET:
+        description: 'The target stage to build from the Dockerfile passed from the caller workflow'
+        default: 'prod'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-push:
+    name: Build + Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Echo Inputs
+        run: |
+          echo "Inputs:"
+          echo "  REGISTRY: ${{ env.REGISTRY }}"
+          echo "  IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+          echo "  ACTOR: ${{ github.actor }}"
+          echo "  TOKEN: ${{ secrets.GITHUB_TOKEN }}"
+          echo "  CONTEXT: ${{ inputs.CONTEXT  }}"
+          echo "  TARGET: ${{ inputs.TARGET  }}"
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v4
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - uses: docker/build-push-action@v4
+        with:
+          context: ${{ inputs.CONTEXT }}
+          target: ${{ inputs.TARGET }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
