@@ -18,3 +18,4 @@ vector_store/
 report*.md
 temp/
 .pdm-python
+.pdm-build
