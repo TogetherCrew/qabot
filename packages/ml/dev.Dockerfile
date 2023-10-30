@@ -1,6 +1,8 @@
 FROM python:3.10-slim-bullseye AS base
 
-LABEL dev=true
+LABEL hivemind.env.dev=true
+
+ENV ENV_FILE="docker"
 
 ENV PYTHONFAULTHANDLER=1 \
 PYTHONUNBUFFERED=1 \

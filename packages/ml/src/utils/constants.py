@@ -4,12 +4,16 @@ import os
 from dotenv import load_dotenv
 from langchain.embeddings import OpenAIEmbeddings
 
-ENV = os.getenv('ENV')
+from logger.hivemind_logger import logger
 
-if ENV == 'local':
-    load_dotenv(dotenv_path='../.local.env')
-else:
+ENV_FILE = os.getenv('ENV_FILE')
+
+logger.debug(f"ENV_FILE: {ENV_FILE}")
+
+if ENV_FILE == 'docker':
     load_dotenv()
+else:
+    load_dotenv(dotenv_path='../.local.env')
 
 OPENAI_API_MODEL = os.getenv("OPENAI_API_MODEL", "gpt-3.5-turbo")
 assert OPENAI_API_MODEL, "OPENAI_API_MODEL environment variable is missing from .env"

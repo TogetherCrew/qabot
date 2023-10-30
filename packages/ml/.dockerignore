@@ -1,5 +1,4 @@
 *.env
-tasks/tasks.env
 coverage/*
 .pytest_cache
 __pycache__
@@ -15,5 +14,5 @@ docker-compose.yml
 .pdm-python
 .pdm-build
 .venv
-vector_store
+.lock
 .python-version
