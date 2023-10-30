@@ -7,6 +7,7 @@ import tiktoken
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from llm.summarize.prompt import get_final_answer_template
+from logger.hivemind_logger import logger
 from memory.procedual_memory import ProcedualMemory, ToolNotFoundException
 from memory.episodic_memory import EpisodicMemory, Episode
 from memory.semantic_memory import SemanticMemory
@@ -193,6 +194,17 @@ class Agent(BaseModel):
                     action = reasoning_result["action"]  # type: ignore
                     tool_name = action["tool_name"]  # type: ignore
                     args = action["args"]  # type: ignore
+
+                    def empty_for_non_existing_key(key: str, default: Any = "") -> dict:
+                        if key not in thoughts:
+                            logger.warning(f"Key {key} not found in 'thoughts'")
+                            thoughts[key] = default
+                        return thoughts
+
+                    thoughts["criticism"] = empty_for_non_existing_key("criticism")
+                    thoughts["summary"] = empty_for_non_existing_key("summary")
+
+
                     # if tool_name != 'task_complete':
                     #     tool_name = "conversations_raw"
                     #     args = {'query':'Amin'}

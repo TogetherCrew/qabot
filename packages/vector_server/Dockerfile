@@ -17,7 +17,7 @@ WORKDIR /project
 RUN mkdir __pypackages__ && pdm sync --prod --no-editable --fail-fast
 
 
-FROM python:3.10-slim-bullseye
+FROM python:3.10-slim-bullseye as prod
 
 ENV PYTHONPATH=/project/pkgs
 

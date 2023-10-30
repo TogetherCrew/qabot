@@ -17,3 +17,7 @@ agent_data/
 vector_store/
 report*.md
 temp/
+
+.pdm-python
+.pdm-build
+.python-version
