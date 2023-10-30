@@ -24,7 +24,7 @@ services:
     depends_on:
      - redis
     volumes:
-      - ./vector_store/:/project/pkgs/vector_store/
+      - ./vector_store/:/project/vector_store/
     command: celery -A tasks.celery worker -c 1 --hostname celery --loglevel=info
   redis:
     image: redis:latest

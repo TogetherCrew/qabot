@@ -1,11 +1,9 @@
 version: "3"
 services:
   vector_api:
+    image: ghcr.io/kamikazebr/qabot:main-vector_server
     ports:
       - 1234:1234
-    build:
-      context: .
-      dockerfile: Dockerfile
     depends_on:
       - rabbitmq
       - redis
@@ -13,16 +11,13 @@ services:
     env_file:
       - .env
   celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/kamikazebr/qabot:main-vector_server
     env_file:
       - .env
     depends_on:
      - redis
-    volumes:
-      - ./vector_store/:/project/pkgs/vector_store/
     command: celery -A tasks.celery worker -c 1 --hostname celery --loglevel=info
+
   redis:
     image: redis:latest
     ports:
