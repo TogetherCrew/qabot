@@ -13,6 +13,7 @@ COPY . /project/
 
 WORKDIR /project
 
+RUN pdm lock
 RUN pdm export --format requirements --without-hashes > requirements.txt
 RUN pip install -r requirements.txt
 
