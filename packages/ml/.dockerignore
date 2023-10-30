@@ -15,3 +15,4 @@ docker-compose.yml
 .pdm-build
 .venv
 .lock
+.python-version

@@ -19,3 +19,4 @@ report*.md
 temp/
 .pdm-python
 .pdm-build
+.python-version

@@ -16,3 +16,4 @@ docker-compose.yml
 .pdm-build
 .venv
 vector_store
+.python-version
