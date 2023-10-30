@@ -52,5 +52,5 @@ jobs:
           context: ${{ inputs.CONTEXT }}
           target: ${{ inputs.TARGET }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}@${{ inputs.IMAGE_NAME }}
+          tags: ${{ steps.meta.outputs.tags }}-${{ inputs.IMAGE_NAME }}
           labels: ${{ steps.meta.outputs.labels }}
