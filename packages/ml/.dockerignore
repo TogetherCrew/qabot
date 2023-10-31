@@ -14,5 +14,6 @@ docker-compose.yml
 .pdm-python
 .pdm-build
 .venv
-.lock
 .python-version
+.lock
+!pdm.lock
