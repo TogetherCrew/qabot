@@ -7,6 +7,7 @@ from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.schema import LLMResult
 from pydantic import BaseModel
 
+
 # TODO If used by two LLM runs in parallel this won't work as expected
 
 
@@ -16,6 +17,7 @@ class ResponseChunkBase(BaseModel):
 
 class TextChunk(ResponseChunkBase):
     token: str
+
 
 class InfoChunk(ResponseChunkBase):
     count_tokens: int
@@ -38,7 +40,7 @@ class AsyncChunkIteratorCallbackHandler(AsyncCallbackHandler):
         self.done = asyncio.Event()
 
     async def on_llm_start(
-        self, serialized: Dict[ResponseChunkBase, Any], prompts: List[ResponseChunkBase], **kwargs: Any
+            self, serialized: Dict[ResponseChunkBase, Any], prompts: List[ResponseChunkBase], **kwargs: Any
     ) -> None:
         # If two calls are made in a row, this resets the state
         self.done.clear()
@@ -50,7 +52,7 @@ class AsyncChunkIteratorCallbackHandler(AsyncCallbackHandler):
         self.done.set()
 
     async def on_llm_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+            self, error: BaseException | KeyboardInterrupt, **kwargs: Any
     ) -> None:
         self.done.set()
 

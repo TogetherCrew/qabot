@@ -5,22 +5,17 @@ from typing import Callable, Any
 from tc_messageBroker import RabbitMQ
 
 from logger.embedding_logger import logger
-
-
-def do_something(received_data):
-    A = 2 * 2
-    message = f"Calculation Results: {A}"
-    print(message)
-    print(f"received_data: {received_data}")
+from utils import constants
 
 
 class EventBroker:
     def __init__(self):
-        self.broker_url = os.getenv('RABBITMQ_HOST', "localhost")
-        self.port = os.getenv('RABBITMQ_PORT', 5672)
 
-        self.username = os.getenv('RABBITMQ_USER', "guest")
-        self.password = os.getenv('RABBITMQ_PASS', "guest")
+        self.broker_url = constants.RABBITMQ_HOST
+        self.port = constants.RABBITMQ_PORT
+        self.username = constants.RABBITMQ_USER
+        self.password = constants.RABBITMQ_PASS
+
         logger.info(f"__init__ broker_url: {self.broker_url}:{self.port}")
 
     async def a_listen(self, queue: str, event: str, callback: Callable):

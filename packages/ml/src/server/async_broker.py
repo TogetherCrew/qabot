@@ -74,8 +74,7 @@ class AsyncBroker:
 
     async def connect(self):
         url = f"amqp://{constants.RABBITMQ_USER}:{constants.RABBITMQ_PASS}@{constants.RABBITMQ_HOST}/"
-        logger.debug(f"Create connection to url: {url}")
-        self.connection = await aio_pika.connect_robust(url=url) # TODO use constants.py
+        self.connection = await aio_pika.connect_robust(url=url)
 
     async def listen(self, queue_name="HIVEMIND_API", event_name="RUN", callback=None):
         if queue_name not in self.queues:

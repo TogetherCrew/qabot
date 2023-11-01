@@ -4,32 +4,18 @@ import os
 from celery.app import Celery
 
 from logger.embedding_logger import logger
-from server.broker import EventBroker
 from tasks.helper import set_status
 from vectorstore import vector_store_data
+from utils.constants import REDIS_URI
 
 logging.getLogger("pika").setLevel(logging.WARNING)
-
-redis_host = os.getenv('REDIS_HOST', 'localhost')
-redis_port = os.getenv('REDIS_PORT', 6379)
-redis_url = os.getenv('CELERY_REDIS_URL', f"redis://{redis_host}:{redis_port}")
-
-celery = Celery('celery', broker=redis_url, backend=redis_url)
+logger.debug(f"REDIS_URI {REDIS_URI}")
+celery = Celery('celery', broker=REDIS_URI, backend=REDIS_URI)
 celery.config_from_object('tasks.celeryconfig')
-
-# from dotenv import load_dotenv
-# load_dotenv(dotenv_path='tasks.env')
 
 celery.conf.env = os.environ
 
-# logger.info(f"os.environ: {os.environ}")
-# logger.info(f"celery.conf().env: {celery.conf.env}")
-
 CELERY_HOSTNAME = f'celery@{celery.main}'
-
-
-# es = EventBroker()
-
 
 def count_actives() -> tuple[int, list]:
     active = celery.control.inspect().active()
@@ -65,7 +51,7 @@ def is_active_empty():
     return count == 0
 
 
-def take_active_at(index = 0):
+def take_active_at(index=0):
     count, list_actives = count_actives()
     found = None
     if count > 0:
@@ -76,17 +62,11 @@ def take_active_at(index = 0):
 @celery.task(bind=True)
 def vector_store_update(self, session: str, openai_key, db_connection_str, db_guild):
     set_status(self)
-    # celery.control.app.conf.env
-    # es.publish("HIVEMIND_API", "UPDATED_STORE",
-    #            {"uuid": session, "data": '/update', "status": "BEGIN"})
-
+    logger.debug('Starting vector store update FROM celery')
     # OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD
     vector_store_data.main([openai_key, db_connection_str, db_guild, self])
 
     set_status(self, meta={'current': 'END'})
-
-    # es.publish("HIVEMIND_API", "UPDATED_STORE",
-    #            {"uuid": session, "data": '/update', "status": "ENDED"})
 
 
 if __name__ == '__main__':

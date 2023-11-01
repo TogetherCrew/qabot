@@ -60,9 +60,9 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-async def get_current_user(request: Request, Authorization: str = Header(...)):
+async def get_current_user(request: Request, authorization: str = Header(...)):
     request_id = request.headers['x-request-id']
-    token = Authorization.split("Bearer ")[1]
+    token = authorization.split("Bearer ")[1]
     print(f"token: {token}")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -96,17 +96,17 @@ async def get_current_user(request: Request, Authorization: str = Header(...)):
     return User(address=address, request_id=request_id)
 
 
-def verify_signature(signatureObj: SiginETH):
+def verify_signature(signature_obj: SiginETH):
     is_valid = False
     error = None
-    message = None
+    message: SiweMessage | None = None
     try:
-        message: SiweMessage = SiweMessage(message=signatureObj.message_eip4361_str)
-        message.verify(signatureObj.signature)
+        message: SiweMessage = SiweMessage(message=signature_obj.message_eip4361_str)
+        message.verify(signature_obj.signature)
         is_valid = True
     except ValueError as e:
         # Invalid message
-        print("Authentication attempt rejected. ValueError")
+        print("Authentication attempt rejected. ValueError") # TODO: use logger instead print
         error = "Invalid message"
     except siwe.ExpiredMessage as e:
         print("Authentication attempt rejected. ExpiredMessage")

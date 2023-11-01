@@ -111,6 +111,7 @@ def configure_logging() -> None:
             'loggers': {
                 # project logger
                 'app': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
+                'hivemind': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
                 # third-party package loggers
                 'databases': {'handlers': ['console'], 'level': 'WARNING'},
                 'httpx': {'handlers': ['console'], 'level': 'INFO'},
@@ -127,6 +128,20 @@ async def async_post_request(url, json):
 
 
 async def async_get_request(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data
+                else:
+                    # Handle HTTP errors here, if necessary
+                    return None
+    except aiohttp.ClientError as e:
+        # Handle specific aiohttp exceptions, if necessary
+        logger.error(f"Error while making the request: {e}")
+        return None
+    except Exception as e:
+        # Handle other non-specific exceptions
+        logger.error(f"Unexpected error: {e}")
+        return None

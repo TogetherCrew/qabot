@@ -1,5 +1,5 @@
 #  Author Ene SS Rawa / Tjitse van der Molen
-
+from logger.embedding_logger import logger
 # # # # # import libraries # # # # #
 
 from .summarize_text import summarize_text
@@ -59,7 +59,7 @@ def summarize_discord_main(mess_dict_all, OA_key, summarize_channel, summarize_s
 
 		# initiate dictionary for summaries per thread
 		thread_summaries[chan] = {}
-		
+
 		# set counter to 1
 		counter = 1
 

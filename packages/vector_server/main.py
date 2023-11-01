@@ -4,16 +4,19 @@ from typing import Any, Optional
 from langchain.schema import Document
 from pydantic.main import BaseModel
 
-from utils.constants import OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, DEEPLAKE_RAW_PATH, DEEPLAKE_SUMMARY_PATH, \
-    DEFAULT_EMBEDDINGS
+from utils.constants import OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, \
+    DEFAULT_EMBEDDINGS, HIVEMIND_VS_PORT, DEEPLAKE_FOLDER, DEEPLAKE_PLATFORM_FOLDER, DEEPLAKE_RAW_FOLDER, \
+    DEEPLAKE_SUMMARY_FOLDER
 from langchain.vectorstores import DeepLake
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 if __name__ == "__main__":
     import uvicorn
-    API_PORT = os.getenv('PORT', 1234)
-    uvicorn.run("main:app", host="0.0.0.0", port=API_PORT, reload=True)
+
+    uvicorn.run("main:app", host="0.0.0.0",
+                port=int(HIVEMIND_VS_PORT),
+                reload=False)
 else:
     from starlette.responses import Response
 
@@ -42,9 +45,9 @@ else:
 
     from tasks import celery as task
 
-    redis_instance = Redis.from_url(task.redis_url)
-    lock = RedisLock(redis_instance, name="task_id")
 
+    # redis_instance = Redis.from_url(task.REDIS_URI)
+    # lock = RedisLock(redis_instance, name="task_id")
 
     class TaskOut(BaseModel):
         id: str
@@ -55,18 +58,26 @@ else:
 
 
     def _to_task_out(r: AsyncResult) -> TaskOut:
-        return TaskOut(id=r.task_id, status=r.status,result=r.result,traceback=r.traceback,meta=str(r._get_task_meta()))
+        return TaskOut(id=r.task_id, status=r.status,
+                       result=r.result, traceback=r.traceback,
+                       meta=str(r._get_task_meta()))
 
 
     @app.get("/")
     async def status() -> Response:
         return Response(content="OK")
 
+
     # TODO maybe create another route using POST and query as body to avoid url encoding
     # TODO we should secure that endpoint with a token and/or IP allowlist
     @app.get("/search/{where}/{query}")
-    def search(where: str = None, query: str = None, k: Optional[int] = 5) -> list[Document]:
+    def search(where: str = None, query: str = None,index:Optional[int] = 0, k: Optional[int] = 5) -> list[Document]:
         logger.info(f"search: {where} {query}")
+
+        PATH_INDEX = f"_{index}"
+
+        DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}", DEEPLAKE_RAW_FOLDER)
+        DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}", DEEPLAKE_SUMMARY_FOLDER)
 
         db = DeepLake(dataset_path=(DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH),
                       read_only=True,
@@ -77,6 +88,7 @@ else:
 
         return relevant_documents
 
+
     @app.get("/update/")
     def vectorstore_update(request: Request) -> Any:
         try:
@@ -84,10 +96,10 @@ else:
             # eb.publish("HIVEMIND_API", "UPDATED_STORE",
             #         {"uuid": session, "data": '/update', "status": "STARTING"})
 
-            logger.debug(f'session: {session} | ip:{request.client.host}:{request.client.port}')
+            logger.debug(f'session: {session}')
 
-            if not lock.acquire(blocking_timeout=4):
-                raise HTTPException(status_code=500, detail="Could not acquire lock")
+            # if not lock.acquire(blocking_timeout=4):
+            #     raise HTTPException(status_code=500, detail="Could not acquire lock")
 
             if task.is_active_empty():
                 r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD)
@@ -101,29 +113,55 @@ else:
             msg = f'RedisConnectionError: {rce}'
             logger.debug(msg)
             return Response(content=msg, status_code=503)
-        except ConnectionError as ce: # TODO: ConnectionError should be custom error inside the broker tc lib, but its builtins
+        except ConnectionError as ce:
+            # TODO: ConnectionError should be custom error inside the broker tc lib, but its builtins
             msg = f'ConnectionError: {ce}'
             logger.debug(msg)
             return Response(content=msg, status_code=503)
-        finally:
-            try:
-                lock.release()
-            except:
-                logger.debug('ConnectionError at lock release')
+        # finally:
+        #     try:
+        #         lock.release()
+        #     except BaseException:
+        #         logger.debug('ConnectionError at lock release')
 
 
     @app.get("/status/{task_id}")
-    def status(task_id: str = None) -> TaskOut:
+    def status(task_id: str = None) -> Any:
+        try:
+            stats = task.celery.control.inspect().stats()
 
-        stats = task.celery.control.inspect().stats()
+            logger.info(f'STATS {stats}')
 
-        logger.info(f'STATS {stats}')
+            if stats and task.CELERY_HOSTNAME in stats:
+                logger.info(f'STATS in {stats[task.CELERY_HOSTNAME]}')
 
-        if stats and task.CELERY_HOSTNAME in stats:
-            logger.info(f'STATS in {stats[task.CELERY_HOSTNAME]}')
+            if task.is_active_empty():
+                return Response(content="Task list its empty", status_code=503)
+            else:
+                _, list = task.count_actives()
+                # ['id']
+                # check if task_id is in list using for and check against task['id']
+                found = None
+                for _task in list:
+                    if 'id' in _task and _task['id'] == task_id:
+                        found = _task
+                        break
 
-        r = task.celery.AsyncResult(task_id)
-        return _to_task_out(r)
+                if found is None:
+                    return Response(content="Task not found", status_code=404)
+
+                r = task.celery.AsyncResult(task_id)
+
+                return _to_task_out(r)
+        except RedisConnectionError as rce:
+            msg = f'RedisConnectionError: {rce}'
+            logger.debug(msg)
+            return Response(content=msg, status_code=503)
+        except ConnectionError as ce:
+            # TODO: ConnectionError should be custom error inside the broker tc lib, but its builtins
+            msg = f'ConnectionError: {ce}'
+            logger.debug(msg)
+            return Response(content=msg, status_code=503)
 
 
     @app.get("/kill/{task_id}")
@@ -132,7 +170,7 @@ else:
             raise HTTPException(
                 status_code=400, detail=f"Could not determine task {task_id}"
             )
-        r = task.celery.AsyncResult(task_id)
+        # r = task.celery.AsyncResult(task_id)
         task.celery.control.revoke(task_id, terminate=True, signal="SIGKILL")
         return Response(content=f'Killing {task_id}')
 

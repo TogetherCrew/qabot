@@ -1,18 +1,19 @@
 version: "3"
 networks:
   vector_server_default:
-    name: vector_server_default
+    external:
+      name: vector_server_default
 services:
   hivemind_api:
     ports:
-      - 3333:3333
+      - "3333:3333"
     networks:
       - vector_server_default
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      dockerfile: Dockerfile
     env_file:
       - .env
-    volumes:
-      - ./:/project/
-    command: [ "python","/project/src/api.py" ]
+#    volumes:
+#      - ./:/project/
+#    command: [ "python","/project/src/api.py" ]

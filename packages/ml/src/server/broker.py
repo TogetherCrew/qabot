@@ -13,6 +13,8 @@ from logger.hivemind_logger import logger
 
 logging.getLogger("PIKA").setLevel(logging.WARNING)
 
+from utils import constants
+
 
 class QueueObj(Enum):
     SERVER_API = Event.SERVER_API
@@ -36,11 +38,11 @@ class EventBroker:
 
     def __init__(self):
         self.rabbit_mq = None
-        self.broker_url = os.getenv('RABBITMQ_HOST', "localhost")
-        self.port = os.getenv('RABBITMQ_PORT', 5672)
+        self.broker_url = constants.RABBITMQ_HOST
+        self.port = constants.RABBITMQ_PORT
+        self.username = constants.RABBITMQ_USER
+        self.password = constants.RABBITMQ_PASS
 
-        self.username = os.getenv('RABBITMQ_USER', "guest")
-        self.password = os.getenv('RABBITMQ_PASS', "guest")
         logger.info(f"__init__ broker_url: {self.broker_url}:{self.port}")
         self.connect()
 
