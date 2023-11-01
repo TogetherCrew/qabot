@@ -111,7 +111,7 @@ def configure_logging() -> None:
             'loggers': {
                 # project logger
                 'app': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
-                'hivemind': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
+                # 'hivemind': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
                 # third-party package loggers
                 'databases': {'handlers': ['console'], 'level': 'WARNING'},
                 'httpx': {'handlers': ['console'], 'level': 'INFO'},
