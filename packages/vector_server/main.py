@@ -77,9 +77,12 @@ else:
 
             PATH_INDEX = f"_{index}"
 
-            DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+            current_path_of_file = os.path.dirname(__file__) # get current file location
+
+            DEEPLAKE_RAW_PATH = os.path.join(current_path_of_file, DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
                                              DEEPLAKE_RAW_FOLDER)
-            DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+            #
+            DEEPLAKE_SUMMARY_PATH = os.path.join(current_path_of_file, DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
                                                  DEEPLAKE_SUMMARY_FOLDER)
 
             path_to_use = DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH
@@ -95,6 +98,8 @@ else:
             logger.debug(f"relevant_documents: {relevant_documents}")
         except BaseException as e:
             logger.error(e)
+            if 'detail' in e:
+                logger.error(f"Error detail: {e['detail']}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=405, detail=f"Error: {e}")
