@@ -71,20 +71,32 @@ else:
     # TODO maybe create another route using POST and query as body to avoid url encoding
     # TODO we should secure that endpoint with a token and/or IP allowlist
     @app.get("/search/{where}/{query}")
-    def search(where: str = None, query: str = None,index:Optional[int] = 0, k: Optional[int] = 5) -> list[Document]:
-        logger.info(f"search: {where} {query}")
+    def search(where: str = None, query: str = None, index: Optional[int] = 0, k: Optional[int] = 5) -> list[Document]:
+        relevant_documents = None
+        try:
+            logger.info(f"search: where:{where} query :'{query}' index:{index} k:{k}")
 
-        PATH_INDEX = f"_{index}"
+            PATH_INDEX = f"_{index}"
 
-        DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}", DEEPLAKE_RAW_FOLDER)
-        DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}", DEEPLAKE_SUMMARY_FOLDER)
+            DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+                                             DEEPLAKE_RAW_FOLDER)
+            DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+                                                 DEEPLAKE_SUMMARY_FOLDER)
 
-        db = DeepLake(dataset_path=(DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH),
-                      read_only=True,
-                      embedding=DEFAULT_EMBEDDINGS
-                      )
-        relevant_documents = db.similarity_search(query=query, k=k)
-        logger.debug(f"relevant_documents: {relevant_documents}")
+            path_to_use = DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH
+
+            if not os.path.exists(path_to_use):
+                raise HTTPException(status_code=404, detail=f"Deeplake path not found: {path_to_use}")
+
+            db = DeepLake(dataset_path=(path_to_use),
+                          read_only=True,
+                          embedding=DEFAULT_EMBEDDINGS
+                          )
+            relevant_documents = db.similarity_search(query=query, k=k)
+            logger.debug(f"relevant_documents: {relevant_documents}")
+        except BaseException as e:
+            logger.error(e)
+            raise HTTPException(status_code=404, detail=f"Error: {e}")
 
         return relevant_documents
 

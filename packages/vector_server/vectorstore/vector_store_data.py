@@ -34,9 +34,9 @@ def main(args):
 
     CHANNELS_ID = ["968110585264898048", "1047205126709969007", "1047205182871707669", "1047390883215052880",
                    "1095278496147849257"]
-    DATES = ['2023-07-01', '2023-07-02', '2023-07-03', '2023-07-04', '2023-07-05']
+    # DATES = ['2023-07-01', '2023-07-02', '2023-07-03', '2023-07-04', '2023-07-05']
     # CHANNELS_ID = ["968110585264898048"]
-    # DATES = ['2023-07-01']
+    DATES = ['2023-10-24', '2023-10-31']
 
     # CHANNELS_ID = [""]
     # DATES = ['2023-04-13', '2023-04-14', '2023-04-15', '2023-04-16', '2023-04-17', '2023-04-18', '2023-04-19']
@@ -242,7 +242,7 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
     SUM_DB_SAVE_PATH = os.path.join(CURRENT_PLATFORM_PATH,
                                     constants.DEEPLAKE_SUMMARY_FOLDER)
 
-    METADATA_OPTIONS_SAVE_PATH = os.path.join(constants.DEEPLAKE_FOLDER, CURRENT_PLATFORM_PATH,
+    METADATA_OPTIONS_SAVE_PATH = os.path.join(CURRENT_PLATFORM_PATH,
                                               "metadata_options.json")
 
     # store results in vector stores
