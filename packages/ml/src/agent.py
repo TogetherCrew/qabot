@@ -487,6 +487,7 @@ class Agent(BaseModel):
 
                 full_prompt = " ".join([msg.content for msg in prompt_msg])
 
+                logger.debug(f"full_prompt: {full_prompt}")
                 # await self.ui.notify(title="REASONING PROMPT", message=full_prompt)
                 try:
                     enc = tiktoken.encoding_for_model(self.openaichat.model_name)

@@ -87,7 +87,7 @@ else:
             if not os.path.exists(path_to_use):
                 raise HTTPException(status_code=404, detail=f"Deeplake path not found: {path_to_use}")
 
-            db = DeepLake(dataset_path=(path_to_use),
+            db = DeepLake(dataset_path=path_to_use,
                           read_only=True,
                           embedding=DEFAULT_EMBEDDINGS
                           )
@@ -95,7 +95,9 @@ else:
             logger.debug(f"relevant_documents: {relevant_documents}")
         except BaseException as e:
             logger.error(e)
-            raise HTTPException(status_code=404, detail=f"Error: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=405, detail=f"Error: {e}")
 
         return relevant_documents
 
