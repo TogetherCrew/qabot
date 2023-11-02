@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any, Optional, List, Annotated
 
 from langchain.schema import Document
 from pydantic.main import BaseModel
@@ -23,8 +23,7 @@ else:
     from logger.embedding_logger import get_logger
 
     from asgi_correlation_id import CorrelationIdMiddleware
-    from fastapi import FastAPI, Request, HTTPException
-    from fastapi import Request
+    from fastapi import FastAPI, Request, HTTPException, Query
 
     import logging
 
@@ -102,19 +101,26 @@ else:
 
 
     @app.get("/update/")
-    def vectorstore_update(request: Request) -> Any:
+    def vectorstore_update(request: Request, dates: Annotated[List[str] | None, Query(description="List of dates to "
+                                                                                                  "be collected")] =
+    None
+                           , channels: Annotated[List[str] | None, Query(description="List channels ids to be collected")] = None
+                           , index: Annotated[int | None, Query(description="Indicate where store, if -1 automatic "
+                                                                            "find next index, otherwise index choose,"
+                                                                            " note it can append over the current "
+                                                                            "store")] = -1) -> Any:
         try:
             session = f"{request.headers['x-request-id']}"
             # eb.publish("HIVEMIND_API", "UPDATED_STORE",
             #         {"uuid": session, "data": '/update', "status": "STARTING"})
 
             logger.debug(f'session: {session}')
-
+            if index is None:
+                index = -1
             # if not lock.acquire(blocking_timeout=4):
             #     raise HTTPException(status_code=500, detail="Could not acquire lock")
-
             if task.is_active_empty():
-                r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD)
+                r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, dates, channels, index)
                 return _to_task_out(r)
             else:
                 # the last task is still running!
