@@ -1,8 +1,7 @@
 version: "3"
 networks:
   vector_server_default:
-    external:
-      name: vector_server_default
+    external: true
 services:
   hivemind_api:
     image: ghcr.io/kamikazebr/qabot:main-ml
