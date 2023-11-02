@@ -1,8 +1,7 @@
 version: "3"
 networks:
   vector_server_default:
-    external:
-      name: vector_server_default
+    external: true
 services:
   discord_bot:
 #    image: ghcr.io/kamikazebr/qabot:main-vector_server
