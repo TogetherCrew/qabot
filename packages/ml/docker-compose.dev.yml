@@ -11,9 +11,9 @@ services:
       - vector_server_default
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dev.Dockerfile
     env_file:
       - .env
-#    volumes:
-#      - ./:/project/
-#    command: [ "python","/project/src/api.py" ]
+    volumes:
+      - ./src:/project/src
+    command: [ "python","/project/src/api.py" ]
