@@ -135,7 +135,7 @@ async def async_get_request(url):
                     data = await response.json()
                     return data
                 else:
-                    logger.error(f"Error while making the request: {response}")
+                    logger.error(f"Error while making the request: {response.text()}")
                     # Handle HTTP errors here, if necessary
                     return None
     except aiohttp.ClientError as e:
