@@ -80,7 +80,7 @@ class SemanticMemory(BaseModel):
             if len(result_json_obj) > 0:
                 await asyncio.create_task(self._embed_knowledge(result_json_obj))
 
-        except Exception as e:
+        except BaseException as e:
             print(f"semantic->extract_entity->Text: {text}\n")
             print(f"semantic->extract_entity->Result: {result}\n")
             print(
