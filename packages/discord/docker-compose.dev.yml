@@ -1,4 +1,8 @@
 version: "3"
+networks:
+  vector_server_default:
+    external:
+      name: vector_server_default
 services:
   discord_bot_dev:
     build:
