@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import sys
 from enum import Enum
-from typing import AsyncContextManager
+from typing import AsyncContextManager, Optional
 
 from langchain.schema import LLMResult, ChatResult
 
@@ -51,48 +51,54 @@ class CommandlineUserInterface(BaseHumanUserInterface):
                 continue
 
     async def notify(
-        self,
-        title: str,
-        message: str,
-        title_color: str | Color = Color.YELLOW,
-        stream: bool = False,
+            self,
+            message: str,
+            title: Optional[str] = None,
+            title_color: str | Color = Color.YELLOW,
+            stream: bool = False,
     ) -> None:
         """Print a notification to the user"""
         if stream:
-            await self.stream(title, message)
+            await self.stream(title=title, message=message)
         if isinstance(title_color, str):
             try:
                 title_color = Color[title_color.upper()]
             except KeyError:
                 raise ValueError(f"{title_color} is not a valid Color")
-        self._print_message(title, message, title_color)
+        self._print_message(title=title, message=message, title_color=title_color)
 
-    async def stream(self, title: str | None, message: str):
+    async def stream(self, message: str, title: Optional[str] = None):
         """Print a notification to the user"""
-        await self._call_callback_text(f"{f'{title}:' if title else ''}{message}")
+        await self._call_callback_text(f"{f'{title}: ' if title else ''}{message}")
 
     async def _call_callback_text(self, message: str):
         if self.callback is not None:
             await self.callback.on_llm_new_token(TextChunk(token=f"{message}\n"))
             await asyncio.sleep(0.05)
 
-    async def call_callback_info(self, count_tokens: int,model_name: str | None = None):
+    async def call_callback_info(self, count_tokens: int, model_name: str | None = None):
         if self.callback is not None:
-            await self.callback.on_llm_new_token(InfoChunk(count_tokens=count_tokens,model_name=model_name))
+            await self.callback.on_llm_new_token(InfoChunk(count_tokens=count_tokens, model_name=model_name))
             await asyncio.sleep(0.05)
 
     async def call_callback_info_llm_result(self, llm_result: LLMResult | ChatResult):
-        await self.call_callback_info(count_tokens=get_total_tokens(llm_result),model_name=llm_result.llm_output["model_name"])
+        await self.call_callback_info(count_tokens=get_total_tokens(llm_result),
+                                      model_name=llm_result.llm_output["model_name"])
 
     async def call_callback_end(self):
         if self.callback is not None:
             await self.callback.on_llm_end(response=None)
             await asyncio.sleep(0.05)
 
+    async def call_callback_error(self, error: BaseException | KeyboardInterrupt):
+        if self.callback is not None:
+            await self.callback.on_llm_error(error=error)
+            await asyncio.sleep(0.05)
+
     async def loading(
-        self,
-        message: str = "Thinking...",
-        delay: float = 0.1,
+            self,
+            message: str = "Thinking...",
+            delay: float = 0.1,
     ) -> AsyncContextManager:
         """Return a context manager that will display a loading spinner"""
 
@@ -100,7 +106,7 @@ class CommandlineUserInterface(BaseHumanUserInterface):
 
         return self.Spinner(message=message, delay=delay)
 
-    def _print_message(self, title: str, message: str, title_color: Color) -> None:
+    def _print_message(self, message: str, title_color: Color, title: Optional[str] = None) -> None:
         print(
             f"{f'{title_color.value}{title}{Color.COLOR_DEFAULT.value}:' if title else ''} {message}"
         )

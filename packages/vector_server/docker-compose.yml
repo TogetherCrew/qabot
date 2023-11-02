@@ -2,8 +2,6 @@ version: "3"
 services:
   vector_api:
     image: ghcr.io/kamikazebr/qabot:main-vector_server
-    ports:
-      - 1234:1234
     depends_on:
       - rabbitmq
       - redis
@@ -21,18 +19,27 @@ services:
   redis:
     image: redis:latest
     ports:
-      - 6379:6379
+      - "6379:6379"
+    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+    volumes:
+      - type: bind
+        source: ./redis.conf
+        target: /usr/local/etc/redis/redis.conf
+        read_only: true
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - 5672:5672
-      - 15672:15672
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
 
   prometheus:
     image: prom/prometheus:v2.37.9
     container_name: prometheus
     ports:
-      - 9090:9090
+      - "9090:9090"
     command: "--config.file=/etc/prometheus/prometheus.yml"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -52,7 +59,7 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.47.0
     container_name: cadvisor
     ports:
-      - 8080:8080
+      - "8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro

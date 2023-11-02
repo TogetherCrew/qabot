@@ -4,7 +4,7 @@ import requests
 #
 # print(f"Result {r.text}")
 
-for i in range(0, 1000):
+for i in range(0, 1):
     r = requests.get("http://localhost:1234/update")
 
     print(f"Result update {r.text}")

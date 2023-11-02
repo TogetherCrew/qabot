@@ -14,10 +14,10 @@ venv/
 agent_data/
 
 *.lock
+!pdm.lock
 vector_store/
 report*.md
 temp/
-
 .pdm-python
 .pdm-build
 .python-version

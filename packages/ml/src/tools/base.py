@@ -1,6 +1,7 @@
 import inspect
 import traceback
 
+import aiohttp
 from pydantic import Field, Extra, validator, BaseModel
 from typing import Any, Callable, Dict
 
@@ -27,15 +28,18 @@ class AgentTool(BaseModel):
 
     async def run(self, **kwargs: Any) -> str:
         """Run the tool."""
+        result = None
         try:
             #  check if func is corountine
             if inspect.iscoroutinefunction(self.func):
                 result = await self.func(**kwargs)
+                if result is None:
+                    raise Exception("The result from self.func async is None")
             else:
                 result = self.func(**kwargs)
-        except (Exception, KeyboardInterrupt) as e:
-            logger.exception(traceback.print_exc())
-            raise AgentToolError(str(e))
+        except (BaseException, Exception, KeyboardInterrupt, aiohttp.ClientConnectorError) as e:
+            logger.debug(f"Error in run the tool: {e}")
+            raise e
         return result
 
     def get_tool_info(self, include_args=True) -> str:

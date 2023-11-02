@@ -3,24 +3,21 @@ import os
 import traceback
 from asyncio import Task
 
-from tc_messageBroker.rabbit_mq.queue import Queue
-from tc_messageBroker.rabbit_mq.event import Event
 from logger.hivemind_logger import logger
 from server.async_broker import AsyncBroker
+from utils.constants import HIVEMIND_API_PORT
 from utils.util import configure_logging
 
 import aiormq
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# import torch
-#
-# dc = torch.cuda.device_count()
-# print('torch.cuda.device_count:', dc)
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("api:app", host="0.0.0.0", port=3333, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0",
+                port=int(HIVEMIND_API_PORT),
+                reload=False)
 else:
 
     import asyncio
@@ -40,11 +37,10 @@ else:
 
     from asgi_correlation_id import correlation_id
 
-    # from login import User, get_current_user, router as loginRouter
+    ERROR_MESSAGE = f"An error occurred when trying to answer your question. An error report has been sent to " \
+                    f"the developers."
 
     app = FastAPI()
-
-    # app.include_router(loginRouter)
 
     origins = ["*"]
 
@@ -86,15 +82,18 @@ else:
             return load()
 
         async def generate_response(self, request: Request, question: str) -> AsyncGenerator[str, None]:
-            # async def generate_response(self, request: Request, question: str, user: User) -> AsyncGenerator[str, None]:
             run: asyncio.Task | None = None
+
             session = ''
             try:
                 session = f"{request.headers['x-request-id']}"
-                print("session", session)
+                logger.debug(f"session: {session}")
+
                 agent = AsyncResponse.get_agent()
                 run = asyncio.create_task(agent.run(question, self.callback_handler))
+
                 logger.info('Running...')
+
                 async for response in self.callback_handler.aiter():
                     # check token type
                     logger.info(response.__dict__)
@@ -116,23 +115,21 @@ else:
                 await run
                 del agent
                 gc.collect()
-                print("Run Done")
-            except Exception as e:
-                print("Caught Exception:", e)
-                print(traceback.format_exc())
-                logger.exception('Something got wrong')
+                logger.info("Run Done")
             except BaseException as e:  # asyncio.CancelledError
-                print("Caught BaseException:", e)
+                logger.error(f"session:{session}  Caught BaseException: {str(e)}")
                 print(traceback.format_exc())
                 logger.exception('Something got wrong')
+                yield ERROR_MESSAGE
             finally:
-
                 logger.info(f'Total tokens used: {self.total_tokens}')
                 # await eb.a_publish(Queue.DISCORD_BOT, "SEND_MESSAGE",
                 #                 {"uuid": f"s-{session}",
                 #                  "question": question,
                 #                  "user": user.json(),
                 #                  "total_tokens": self.total_tokens})
+
+                # yield ERROR_MESSAGE
 
                 if run:
                     run.cancel()
@@ -145,7 +142,7 @@ else:
                     yield i
                     await asyncio.sleep(0.25)
             except asyncio.CancelledError:
-                logger.error("caught cancelled error")
+                logger.error("caught cancelled error", exc_info=True)
 
 
     class Ask(BaseModel):
@@ -157,8 +154,7 @@ else:
 
         logger.info(f"Received question:{body.question}")
         session = f"{request.headers['x-request-id']}"
-        logger.debug(
-            f'session: {session} ip:{request.client.host}:{request.client.port}')
+        logger.debug(f'session: {session}')
 
         # await eb.a_publish(Queue.DISCORD_BOT, "SEND_MESSAGE",
         #                 {
@@ -169,6 +165,7 @@ else:
 
         ar = AsyncResponse()
         return StreamingResponse(AsyncResponse.streamer(ar.generate_response(request, body.question)))
+
 
     def log_event(msg: str, queue_name: str, event_name: str):
         logger.info(f"{queue_name}->{event_name}::{msg}")
@@ -190,12 +187,12 @@ else:
             await ab.connect()
             loop = asyncio.get_event_loop()
             loop.set_debug(True)
-            logger.info(loop)
+            # logger.info(loop)
 
-            hivemind_task = asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
-                                                                           event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
-                                                                           callback=log_event
-                                                                           ))
+            # hivemind_task = asyncio.get_event_loop().create_task(ab.listen(queue_name=Queue.HIVEMIND,
+            #                                                                event_name=Event.HIVEMIND.GUILD_MESSAGES_UPDATED,
+            #                                                                callback=log_event
+            #                                                                ))
         except aiormq.exceptions.AMQPConnectionError as amqp:
             logger.error(amqp)
 
@@ -206,6 +203,6 @@ else:
     async def shutdown():
         if hivemind_task:
             hivemind_task.cancel()
-        if ab:
+        if ab and ab.connection:
             await ab.connection.close()
         print("Server Shutdown!")

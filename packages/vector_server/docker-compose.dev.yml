@@ -2,7 +2,7 @@ version: "3"
 services:
   vector_api_dev:
     ports:
-      - 1234:1234
+      - "1234:1234"
     build:
       context: .
       dockerfile: dev.Dockerfile
@@ -13,8 +13,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./:/project/
-    command: ["python","/project/main.py"]
+      - ./:/project/src
+    command: ["python","/project/src/main.py"]
   celery_worker:
     build:
       context: .
@@ -29,18 +29,24 @@ services:
   redis:
     image: redis:latest
     ports:
-      - 6379:6379
+      - "6379:6379"
+    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+    volumes:
+      - type: bind
+        source: ./redis.conf
+        target: /usr/local/etc/redis/redis.conf
+        read_only: true
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - 5672:5672
-      - 15672:15672
+      - "5672:5672"
+      - "15672:15672"
 
   prometheus:
     image: prom/prometheus:v2.37.9
     container_name: prometheus
     ports:
-      - 9090:9090
+      - "9090:9090"
     command: "--config.file=/etc/prometheus/prometheus.yml"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -60,7 +66,7 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.47.0
     container_name: cadvisor
     ports:
-      - 8080:8080
+      - "8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
