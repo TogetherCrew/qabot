@@ -91,13 +91,24 @@ async def ask(inter: discord.Interaction, question: str):
             await session.close()
 
     elapsed_time = time.monotonic() - start_time
+
+    # if elapsed_time > 60:
+    #     elapsed_time = elapsed_time / 60
+    #     time_unit = "minutes"
+    # else:
+    #     time_unit = "seconds"
+    #
+    # result_message = f"{last_message}\nAnswer took about {elapsed_time:.2f} {time_unit}!"
+
     if elapsed_time > 60:
-        elapsed_time = elapsed_time / 60
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
         time_unit = "minutes"
+        result_message = f"{last_message}\nAnswer took about {minutes} minutes and {seconds} seconds!"
     else:
         time_unit = "seconds"
+        result_message = f"{last_message}\nAnswer took about {elapsed_time:.2f} {time_unit}!"
 
-    result_message = f"{last_message}\nAnswer took about {elapsed_time:.2f} {time_unit}!"
     logger.debug(f"Msg sent: {result_message}")
     await inter.edit_original_response(content=result_message)
 
