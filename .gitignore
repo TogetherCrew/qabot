@@ -1,5 +1,4 @@
 .idea/
 **/.idea/
-packages/discord/
 .github/workflows/.secrets
 .github/workflows/.pull-request.json

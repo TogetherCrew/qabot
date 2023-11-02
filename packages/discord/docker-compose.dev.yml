@@ -1,0 +1,11 @@
+version: "3"
+services:
+  discord_bot_dev:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./:/project/src
+    command: ["python","/project/src/main.py"]

@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "discordpy-bot-template-with-commands-extension"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+dev = []
+
+[tool.pdm.build]
+includes = []
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[project]
+authors = [
+    {name = "Your Name", email = "you@example.com"},
+]
+requires-python = ">=3.8,<4.0"
+dependencies = [
+    "discord-py==2.2.2",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.8.6",
+]
+name = "discordpy-bot-template-with-commands-extension"
+version = "0.1.0"
+description = ""
