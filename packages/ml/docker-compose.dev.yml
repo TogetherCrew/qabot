@@ -4,6 +4,7 @@ networks:
     external: true
 services:
   hivemind_api:
+    restart: unless-stopped
     ports:
       - "3333:3333"
     networks:

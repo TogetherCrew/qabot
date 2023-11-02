@@ -9,6 +9,7 @@ services:
       dockerfile: dev.Dockerfile
     networks:
       - vector_server_default
+    restart: unless-stopped
     env_file:
       - .env
     volumes:
