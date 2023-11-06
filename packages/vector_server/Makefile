@@ -9,7 +9,7 @@ ifdef prod
 endif
 
 # Default service name
-SERVICE = discord_bot_dev
+SERVICE = vector_api_dev
 
 # Check if the 'service' option is set
 ifdef service

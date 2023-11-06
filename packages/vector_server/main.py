@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any, Optional, List, Annotated
 
 from langchain.schema import Document
 from pydantic.main import BaseModel
@@ -23,8 +23,7 @@ else:
     from logger.embedding_logger import get_logger
 
     from asgi_correlation_id import CorrelationIdMiddleware
-    from fastapi import FastAPI, Request, HTTPException
-    from fastapi import Request
+    from fastapi import FastAPI, Request, HTTPException, Query
 
     import logging
 
@@ -78,9 +77,12 @@ else:
 
             PATH_INDEX = f"_{index}"
 
-            DEEPLAKE_RAW_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+            current_path_of_file = os.path.dirname(__file__) # get current file location
+
+            DEEPLAKE_RAW_PATH = os.path.join(current_path_of_file, DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
                                              DEEPLAKE_RAW_FOLDER)
-            DEEPLAKE_SUMMARY_PATH = os.path.join(DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
+            #
+            DEEPLAKE_SUMMARY_PATH = os.path.join(current_path_of_file, DEEPLAKE_FOLDER, f"{DEEPLAKE_PLATFORM_FOLDER}{PATH_INDEX}",
                                                  DEEPLAKE_SUMMARY_FOLDER)
 
             path_to_use = DEEPLAKE_SUMMARY_PATH if where == '1' else DEEPLAKE_RAW_PATH
@@ -88,7 +90,7 @@ else:
             if not os.path.exists(path_to_use):
                 raise HTTPException(status_code=404, detail=f"Deeplake path not found: {path_to_use}")
 
-            db = DeepLake(dataset_path=(path_to_use),
+            db = DeepLake(dataset_path=path_to_use,
                           read_only=True,
                           embedding=DEFAULT_EMBEDDINGS
                           )
@@ -96,25 +98,36 @@ else:
             logger.debug(f"relevant_documents: {relevant_documents}")
         except BaseException as e:
             logger.error(e)
-            raise HTTPException(status_code=404, detail=f"Error: {e}")
+            if 'detail' in e:
+                logger.error(f"Error detail: {e['detail']}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=405, detail=f"Error: {e}")
 
         return relevant_documents
 
 
     @app.get("/update/")
-    def vectorstore_update(request: Request) -> Any:
+    def vectorstore_update(request: Request, dates: Annotated[List[str] | None, Query(description="List of dates to "
+                                                                                                  "be collected")] =
+    None
+                           , channels: Annotated[List[str] | None, Query(description="List channels ids to be collected")] = None
+                           , index: Annotated[int | None, Query(description="Indicate where store, if -1 automatic "
+                                                                            "find next index, otherwise index choose,"
+                                                                            " note it can append over the current "
+                                                                            "store")] = -1) -> Any:
         try:
             session = f"{request.headers['x-request-id']}"
             # eb.publish("HIVEMIND_API", "UPDATED_STORE",
             #         {"uuid": session, "data": '/update', "status": "STARTING"})
 
             logger.debug(f'session: {session}')
-
+            if index is None:
+                index = -1
             # if not lock.acquire(blocking_timeout=4):
             #     raise HTTPException(status_code=500, detail="Could not acquire lock")
-
             if task.is_active_empty():
-                r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD)
+                r = task.vector_store_update.delay(session, OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD, dates, channels, index)
                 return _to_task_out(r)
             else:
                 # the last task is still running!

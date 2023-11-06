@@ -9,7 +9,7 @@ ifdef prod
 endif
 
 # Default service name
-SERVICE = discord_bot_dev
+SERVICE = hivemind_api
 
 # Check if the 'service' option is set
 ifdef service

@@ -10,6 +10,7 @@ services:
       - rabbitmq
       - redis
       - celery_worker
+    restart: unless-stopped
     env_file:
       - .env
     volumes:
@@ -23,6 +24,8 @@ services:
       - .env
     depends_on:
      - redis
+    restart:
+      unless-stopped
     volumes:
       - ./vector_store/:/project/vector_store/
     command: celery -A tasks.celery worker -c 1 --hostname celery --loglevel=info
@@ -31,6 +34,7 @@ services:
     ports:
       - "6379:6379"
     command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+    restart: unless-stopped
     volumes:
       - type: bind
         source: ./redis.conf
@@ -41,6 +45,7 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:v2.37.9

@@ -28,15 +28,19 @@ def main(args):
 
     task = args[3]
 
+    dates = args[4]
+    channels = args[5]
+    index_deeplake = args[6]
+
     logger.debug(f"OA_KEY: {OA_KEY}")
     logger.debug(f"DB_CONNECTION_STR: {DB_CONNECTION_STR}")
     logger.debug(f"DB_GUILD: {DB_GUILD}")
 
     CHANNELS_ID = ["968110585264898048", "1047205126709969007", "1047205182871707669", "1047390883215052880",
-                   "1095278496147849257"]
+                   "1095278496147849257"] if channels is None else channels
     # DATES = ['2023-07-01', '2023-07-02', '2023-07-03', '2023-07-04', '2023-07-05']
     # CHANNELS_ID = ["968110585264898048"]
-    DATES = ['2023-10-24', '2023-10-31']
+    DATES = ['2023-10-25', '2023-10-26', '2023-10-27', '2023-10-28', '2023-10-29', '2023-10-30'] if dates is None else dates
 
     # CHANNELS_ID = [""]
     # DATES = ['2023-04-13', '2023-04-14', '2023-04-15', '2023-04-16', '2023-04-17', '2023-04-18', '2023-04-19']
@@ -55,14 +59,14 @@ def main(args):
 
     # set_status(task, state='B', meta={'current': 'HF end'})
     # embed and store data
-    vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings, task)
+    vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings, task, index_deeplake)
 
     return
 
 
 # # #
 
-def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings, task):
+def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES, embeddings, task, index_deeplake):
     # set up database access
     db_access = DB_interactions.DB_access(DB_GUILD, DB_CONNECTION_STR)
     query = DB_interactions.Query()
@@ -219,22 +223,24 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
 
     set_status(task, state='H', meta={'current': 'Building DeepLake'})
 
-
-
     PLATFORM_PATH = os.path.join(constants.DEEPLAKE_FOLDER, constants.DEEPLAKE_PLATFORM_FOLDER)
     # check if path exists
     index = 0
     CURRENT_PLATFORM_PATH = f"{PLATFORM_PATH}_{index}"
-    while True:
-        logger.debug(f"init CURRENT_PLATFORM_PATH: {CURRENT_PLATFORM_PATH}")
-        if os.path.exists(CURRENT_PLATFORM_PATH):
-            index += 1
-            CURRENT_PLATFORM_PATH = f"{PLATFORM_PATH}_{index}"
-            continue
-        else:
-            logger.debug(f"break CURRENT_PLATFORM_PATH: {CURRENT_PLATFORM_PATH}")
-            os.makedirs(CURRENT_PLATFORM_PATH, exist_ok=True)
-            break
+
+    if index_deeplake < 0:
+        while True:
+            logger.debug(f"init CURRENT_PLATFORM_PATH: {CURRENT_PLATFORM_PATH}")
+            if os.path.exists(CURRENT_PLATFORM_PATH):
+                index += 1
+                CURRENT_PLATFORM_PATH = f"{PLATFORM_PATH}_{index}"
+                continue
+            else:
+                logger.debug(f"break CURRENT_PLATFORM_PATH: {CURRENT_PLATFORM_PATH}")
+                os.makedirs(CURRENT_PLATFORM_PATH, exist_ok=True)
+                break
+    else:
+        CURRENT_PLATFORM_PATH = f"{PLATFORM_PATH}_{index_deeplake}"
 
     RAW_DB_SAVE_PATH = os.path.join(CURRENT_PLATFORM_PATH,
                                     constants.DEEPLAKE_RAW_FOLDER)
@@ -251,14 +257,18 @@ def vector_store_discord(OA_KEY, DB_CONNECTION_STR, DB_GUILD, CHANNELS_ID, DATES
 
     set_status(task, state='I', meta={'current': 'Start write to file'})
 
-    # store metadata options for vector stores
-    JSON_dict = {"all_channels": all_channels, "all_threads": all_threads, "all_authors": all_authors,
-                 "all_dates": DATES}
+    try:
+        # store metadata options for vector stores
+        JSON_dict = {"all_channels": all_channels, "all_threads": all_threads, "all_authors": all_authors,
+                     "all_dates": DATES}
 
-    with open(METADATA_OPTIONS_SAVE_PATH, "w") as outfile:
-        json.dump(JSON_dict, outfile)
-
-    set_status(task, state='J', meta={'current': 'END'})
+        with open(METADATA_OPTIONS_SAVE_PATH, "w") as outfile:
+            json.dump(JSON_dict, outfile)
+        set_status(task, state='J', meta={'current': 'END'})
+    except BaseException as e:
+        logger.error(f"Error on write to file: {e}")
+        set_status(task, state='Error', meta={'current': 'END'})
+        return
     return
 
 

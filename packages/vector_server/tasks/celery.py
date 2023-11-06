@@ -60,11 +60,15 @@ def take_active_at(index=0):
 
 
 @celery.task(bind=True)
-def vector_store_update(self, session: str, openai_key, db_connection_str, db_guild):
+def vector_store_update(self, session: str, openai_key: str, db_connection_str: str, db_guild: str,
+                        dates: list[str] = None,
+                        channels: list[str] = None,
+                        index: int = -1):
     set_status(self)
+    logger.debug(f"session {session}")
     logger.debug('Starting vector store update FROM celery')
     # OPENAI_API_KEY, DB_CONNECTION_STR, DB_GUILD
-    vector_store_data.main([openai_key, db_connection_str, db_guild, self])
+    vector_store_data.main([openai_key, db_connection_str, db_guild, self, dates, channels, index])
 
     set_status(self, meta={'current': 'END'})
 

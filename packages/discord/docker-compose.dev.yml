@@ -1,9 +1,15 @@
 version: "3"
+networks:
+  vector_server_default:
+    external: true
 services:
   discord_bot_dev:
     build:
       context: .
       dockerfile: dev.Dockerfile
+    networks:
+      - vector_server_default
+    restart: unless-stopped
     env_file:
       - .env
     volumes:

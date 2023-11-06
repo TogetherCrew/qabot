@@ -12,6 +12,7 @@ from langchain.chat_models import ChatOpenAI
 from llm.extract_entity.prompt import get_chat_template
 from llm.extract_entity.schema import JsonSchema as ENTITY_EXTRACTION_SCHEMA
 from llm.json_output_parser import LLMJsonOutputParser, LLMJsonOutputParserException
+from logger.hivemind_logger import logger
 from ui.cui import CommandlineUserInterface
 from utils.constants import DEFAULT_EMBEDDINGS
 from utils.util import atimeit, timeit
@@ -60,6 +61,9 @@ class SemanticMemory(BaseModel):
                 .to_messages()
             )
 
+            full_prompt = " ".join([msg.content for msg in prompt])
+
+            logger.debug(f"semantic->extract_entity->Prompt: {full_prompt}")
             llm_result = await self.openaichat._agenerate(messages=prompt)
             await self.ui.call_callback_info_llm_result(llm_result)
             result = llm_result.generations[0].message.content
@@ -80,7 +84,7 @@ class SemanticMemory(BaseModel):
             if len(result_json_obj) > 0:
                 await asyncio.create_task(self._embed_knowledge(result_json_obj))
 
-        except Exception as e:
+        except BaseException as e:
             print(f"semantic->extract_entity->Text: {text}\n")
             print(f"semantic->extract_entity->Result: {result}\n")
             print(
