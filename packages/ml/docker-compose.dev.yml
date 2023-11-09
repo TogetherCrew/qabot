@@ -17,3 +17,5 @@ services:
     volumes:
       - ./src:/project/src
     command: [ "python","/project/src/api.py" ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3333/"]
