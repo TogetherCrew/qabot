@@ -48,5 +48,3 @@ DEFAULT_EMBEDDINGS = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
 # Define the base path for the serialization
 BASE_PATH_SERIALIZATION = os.path.join(DEFAULT_AGENT_DIR, "serialization")
-
-DEFAULT_VECTOR_SERVER_URL = os.getenv('DEFAULT_VECTOR_SERVER_URL', 'http://localhost:1234')
