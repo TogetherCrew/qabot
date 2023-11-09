@@ -67,6 +67,10 @@ else:
                 headers={'X-Request-ID': correlation_id.get() or ""}
             ))
 
+    # create / route for health check
+    @app.get("/")
+    async def root():
+        return "OK"
 
     class AsyncResponse(BaseModel):
         # background_tasks: BackgroundTasks
@@ -143,7 +147,6 @@ else:
                     await asyncio.sleep(0.25)
             except asyncio.CancelledError:
                 logger.error("caught cancelled error", exc_info=True)
-
 
     class Ask(BaseModel):
         question: str
