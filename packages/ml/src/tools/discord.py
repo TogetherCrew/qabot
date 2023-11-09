@@ -9,7 +9,7 @@ from pydantic.fields import Field
 from logger.hivemind_logger import logger
 from tools.base import AgentTool
 from utils.util import async_get_request
-from utils.constants import DEFAULT_VECTOR_SERVER_URL
+from utils.constants import VECTOR_SERVER_URL
 
 
 class ConversationType(Enum):
@@ -44,7 +44,7 @@ class DiscordTool(AgentTool):
             **kwargs it's used to ignore hallucination params
         """
 
-        url = os.path.join(DEFAULT_VECTOR_SERVER_URL, "search", str(self.convo_type.value), query)
+        url = os.path.join(VECTOR_SERVER_URL, "search", str(self.convo_type.value), query)
 
         logger.debug(f"a_conversation_search_server->calling: {url}")
         json_response = await async_get_request(url)
