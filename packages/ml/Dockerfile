@@ -8,7 +8,7 @@ ENV ENV_FILE="docker" \
 
 # Install PDM
 RUN pip install -U pip setuptools wheel && \
-    pip install pdm
+    pip install pdm==2.10.0
 
 # Set the working directory
 WORKDIR /project
