@@ -47,7 +47,7 @@ dependencies = [
     "backoff<3.0.0,>=2.2.1",
     "aiofiles>=23.2.1",
     "aio-pika>=9.3.0",
-    "tc-messagebroker>=1.6.0",
+    "tc-messageBroker>=1.6.3",
     "faiss-cpu>=1.7.4",
 ]
 name = "QABot"

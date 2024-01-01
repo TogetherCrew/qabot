@@ -1,12 +1,11 @@
 import asyncio
 import logging
-import os
 import threading
-from enum import Enum
-from typing import Callable, Any, Type
+from typing import Callable, Any, Type, Union
 
 from tc_messageBroker import RabbitMQ
 from tc_messageBroker.rabbit_mq.event import Event
+from tc_messageBroker.rabbit_mq.queue import Queue
 import tc_messageBroker.rabbit_mq.event.events_microservice as Events
 
 from logger.hivemind_logger import logger
@@ -37,22 +36,38 @@ class EventBroker:
     rabbit_mq: RabbitMQ
 
     def __init__(self):
-        self.rabbit_mq = None
         self.broker_url = constants.RABBITMQ_HOST
         self.port = constants.RABBITMQ_PORT
         self.username = constants.RABBITMQ_USER
         self.password = constants.RABBITMQ_PASS
 
         logger.info(f"__init__ broker_url: {self.broker_url}:{self.port}")
-        self.connect()
+        self.rmq_consume = RabbitMQ(
+            broker_url=self.broker_url,
+            port=self.port,
+            username=self.username,
+            password=self.password,
+        )
+
+        self.rmq_publish = RabbitMQ(
+            broker_url=self.broker_url,
+            port=self.port,
+            username=self.username,
+            password=self.password,
+        )
 
     @staticmethod
     def get_queue_by_event(string_to_find: str):
         member_mapping = {}
-        for cls in (Event, Events.BotBaseEvent, Events.AnalyzerBaseEvent,
-                    Events.ServerEvent, Events.DiscordBotEvent,
-                    # Events.DiscordAnalyzerEvent, Events.HivemindEvent):  # if there not UNIQUE events across all classes that will get the last one
-                    Events.DiscordAnalyzerEvent):  # if there not UNIQUE events across all classes that will get the last one
+        for cls in (
+            Event,
+            Events.BotBaseEvent,
+            Events.AnalyzerBaseEvent,
+            Events.ServerEvent,
+            Events.DiscordBotEvent,
+            # Events.DiscordAnalyzerEvent, Events.HivemindEvent):  # if there not UNIQUE events across all classes that will get the last one
+            Events.DiscordAnalyzerEvent,
+        ):  # if there not UNIQUE events across all classes that will get the last one
             for name, value in cls.__dict__.items():
                 member_mapping[name] = cls
         # print(member_mapping)
@@ -71,86 +86,53 @@ class EventBroker:
 
         return _queue_found
 
-    def connect(self) -> RabbitMQ:
-        if self.rabbit_mq is None:
-            logger.info(f"broker_url: {self.broker_url}:{self.port}")
-
-            self.rabbit_mq = RabbitMQ(
-                broker_url=self.broker_url, port=self.port, username=self.username, password=self.password
-            )
-
-        return self.rabbit_mq
-
-    async def a_listen(self, queue: str, event: str, callback: Callable):
-        asyncio.get_event_loop().run_in_executor(None, self.listen, queue, event, callback)
-
-    def listen(self, queue: str, event: str, callback: Callable):
+    async def listen(self, queue: str, event: str, callback: Callable):
         logger.debug("listening %s", queue)
 
-        self.rabbit_mq.on_event(event, callback)
+        async def job(queue: str, event: str, callback: Callable):
+            await self.rmq_consume.on_event_async(event, callback)
 
-        # print("Waiting for messages...")
-        self.rabbit_mq.connect(queue)
-        print(f"Connected to {queue} queue!")
-
-        self.rabbit_mq.consume(queue)
-        print("consume messages...")
-        if self.rabbit_mq.channel is not None:
-            print("listening messages...")
-            try:
-                self.rabbit_mq.channel.start_consuming()
-                print("Never reach here!")
-            except KeyboardInterrupt:
-                self.rabbit_mq.channel.stop_consuming()
-                print("Disconnected from broker successfully!")
-        else:
-            print("Connection to broker was not successful!")
-
-    def add_event(self, event: str, callback: Callable):
-        self.rabbit_mq.on_event(event, callback)
-
-    def t_listen(self, queue: str):
-        logger.debug("listening %s", queue)
-
-        # print("Waiting for messages...")
-
-        def consume_messages():
-            self.rabbit_mq.connect(queue)
+            # print("Waiting for messages...")
+            await self.rmq_consume.connect_async(queue)
             print(f"Connected to {queue} queue!")
-            self.rabbit_mq.consume(queue)
+
+            await self.rmq_consume.consume_async(queue)
             print("consume messages...")
-            if self.rabbit_mq.channel is not None:
+            if self.rmq_consume.channel is not None:
                 print("listening messages...")
                 try:
-                    self.rabbit_mq.channel.start_consuming()
+                    self.rmq_consume.channel.start_consuming()
                     print("Never reach here!")
                 except KeyboardInterrupt:
-                    self.rabbit_mq.channel.stop_consuming()
+                    self.rmq_consume.channel.stop_consuming()
                     print("Disconnected from broker successfully!")
             else:
                 print("Connection to broker was not successful!")
 
-        # Create a separate thread to run the consume_messages function
-        consume_thread = threading.Thread(target=consume_messages)
-        consume_thread.start()
+        threading.Thread(
+            target=asyncio.run, args=(job(queue, event, callback),)
+        ).start()
 
-    async def a_publish(self, queue: str, event: str, content: dict[str, Any] | None):
-        asyncio.get_event_loop().run_in_executor(None, self.publish, queue, event, content)
+    async def add_event(self, event: str, callback: Callable):
+        await self.rmq_consume.on_event_async(event, callback)
 
-    def publish(self, queue: str, event: str, content: dict[str, Any] | None):
+    async def publish(self, queue: str, event: str, content: dict[str, Any] | None):
         logger.debug("publishing %s", content)
 
-        self.rabbit_mq = RabbitMQ(
-            broker_url=self.broker_url, port=self.port, username=self.username, password=self.password
-        )
-
-        self.rabbit_mq.connect(queue)
+        await self.rmq_publish.connect_async(queue)
 
         if content is None:
-            content = {"uuid": "d99a1490-fba6-11ed-b9a9-0d29e7612dp8", "data": "some results"}
+            content = {
+                "uuid": "d99a1490-fba6-11ed-b9a9-0d29e7612dp8",
+                "data": "some results",
+            }
 
-        self.rabbit_mq.publish(
+        await self.rmq_publish.publish_async(
             queue,
             event=event,
             content=content,
         )
+
+    async def close(self):
+        self.rmq_consume.connection.close()
+        self.rmq_publish.connection.close()
