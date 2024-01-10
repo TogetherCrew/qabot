@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import threading
-from typing import Callable, Any, Type, Union
+from enum import Enum
+from typing import Callable, Any, Type
 
 from tc_messageBroker import RabbitMQ
 from tc_messageBroker.rabbit_mq.event import Event
-from tc_messageBroker.rabbit_mq.queue import Queue
 import tc_messageBroker.rabbit_mq.event.events_microservice as Events
 
 from logger.hivemind_logger import logger
